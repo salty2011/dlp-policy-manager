@@ -4,7 +4,7 @@
 RootModule = 'dlp-policy-manager.psm1'
 
 # Version number of this module.
-ModuleVersion = '1.0.0'
+ModuleVersion = '0.1.0'
 
 # Supported PSEditions
 # CompatiblePSEditions = @()
@@ -13,13 +13,13 @@ ModuleVersion = '1.0.0'
 GUID = 'feb5ba03-1f84-4bde-abd3-131f03f3a65c'
 
 # Author of this module
-Author = 'Brine0m'
+Author = 'Salty2011'
 
 # Company or vendor of this module
-CompanyName = 'MyCompany'
+#CompanyName = 'MyCompany'
 
 # Copyright statement for this module
-Copyright = '(c) Brine0m. All rights reserved.'
+#Copyright = '(c) Brine0m. All rights reserved.'
 
 # Description of the functionality provided by this module
 Description = 'Enabled the management of DLP policies and rules using code configuration'
