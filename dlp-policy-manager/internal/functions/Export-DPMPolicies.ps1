@@ -1,4 +1,4 @@
-function Export-Policies {
+function Export-DPMPolicies {
     [CmdletBinding()]
     <#
     .SYNOPSIS
@@ -15,7 +15,7 @@ function Export-Policies {
 
     .EXAMPLE
     $policies = @(@{Name = "Policy1"; Data = "Data1"}, @{Name = "Policy2"; Data = "Data2"})
-    Export-Policies -Policies $policies -OutputPath "C:\Policies"
+    Export-DPMPolicies -Policies $policies -OutputPath "C:\Policies"
     #>
     param (
         [array]$Policies,

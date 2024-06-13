@@ -1,4 +1,4 @@
-function Check-Requirements {
+function Check-DMPRequirements {
     [CmdletBinding()]
     param (
         [string]$RequirementsFilePath = "requirements.txt",
