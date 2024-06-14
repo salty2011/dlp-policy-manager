@@ -1,7 +1,7 @@
 ﻿# DLP Policy Manager
 
-[!WARNING]
-This is in active development and not ready for use. check back later.
+> [!WARNING]
+> This is in active development and not ready for use. check back later.
 
 ## Overview
 The purpose of this powershell module is to provide a declaritive means for deploying DLP Policies in Microsoft 365. Conceptually this aims to be like other orchestation tools like terraform etc where you describe your infrastructure in code and it will deploy that.
