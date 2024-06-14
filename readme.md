@@ -18,4 +18,4 @@ Im sure there will be others are further development continues.
 - [ ] Complete core functions setup
 - [ ] Review licensing
 - [ ] https://github.com/salty2011/dlp-policy-manager/issues/1
-- [ ] (https://github.com/salty2011/dlp-policy-manager/issues/3)
+- [ ] https://github.com/salty2011/dlp-policy-manager/issues/3
