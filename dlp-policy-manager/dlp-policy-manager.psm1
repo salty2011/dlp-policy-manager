@@ -10,5 +10,12 @@ foreach ($file in Get-ChildItem -Path "$PSScriptRoot/internal/scripts" -Filter *
     . $file.FullName
 }
 
+#Initialize dpm global varaibles
+$policies = @()
+$rules = @()
+$classifiers = @()
+
+#Initialize dpm configurations
 $dpm_policy_config = Import-LocalizedData -BaseDirectory "$PSScriptRoot/internal/" -FileName "policy.config.psd1"
 $dpm_rule_config = Import-LocalizedData -BaseDirectory "$PSScriptRoot/internal/" -FileName "rule.config.psd1"
+$dpm_rule_template = Invoke-EPSTemplate -Template [string](Get-Content "$PSScriptRoot/internal/template/rule.template") -Binding $binding
