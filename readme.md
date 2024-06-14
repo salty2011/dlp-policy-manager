@@ -12,3 +12,10 @@ The purpose of this powershell module is to provide a declaritive means for depl
 2. The Data Loss Prevention commands in the module are some what unique in their operation
 
 Im sure there will be others are further development continues.
+
+## TODO
+
+- [ ] Complete core functions setup
+- [ ] Review licensing
+- [ ] https://github.com/salty2011/dlp-policy-manager/issues/1
+- [ ] (https://github.com/salty2011/dlp-policy-manager/issues/3)
