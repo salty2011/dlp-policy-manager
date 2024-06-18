@@ -15,20 +15,32 @@ function Get-ContentConditions {
         $group = @{
             Name     = $_.name
             Operator = $_.operator
+            Sensitivetypes = @()  # Ensuring array structure for sensitive types
+            Labels = @()          # Ensuring array structure for labels
         }
+        
+        # Processing sensitive types
         if ($_.type) {
-            ## sensitive type
-            $group.Sensitivetypes = $_.type | Select-Object @{n = "Name"; e = { $_.name } }, @{n = "ConfidenceLevel"; e = { $_.confidence } }, @{n = "Mincount"; e = { 1 } }, @{n = "Maxcount"; e = { 1 } }   
+            foreach ($type in $_.type) {
+                $group.Sensitivetypes += @{
+                    Name = $type.name
+                    ConfidenceLevel = $type.confidence
+                    Mincount = 1
+                    Maxcount = 1
+                }
+            }
         }
+
+        # Processing labels
         if ($_.labels) {
-            ## sensitivity labels
-            $group.labels = @($_.labels) | Foreach-Object {
-                @{
-                    name = $_.name
+            foreach ($label in $_.labels) {
+                $group.Labels += @{
+                    name = $label
                     type = "Sensitivity"
                 }
             }
         }
+
         $groupConditions.Groups += $group
     }
 

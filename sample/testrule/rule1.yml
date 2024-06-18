@@ -1,12 +1,12 @@
 ## A DLP rule contains fine grained conditions that apply to a given policy and
 rule:
-  - name: HighConfidenceRule
+  - name: HighConfidenceRuleTest6
     policy: TestPol3
     description: This is a test of yaml schema for DLP rules
     state: enable
-    conditions: # can extend to contain new condition types
-      operator: and #and/or; applies to top level clauses
-      content: # -ContentContainsSensitiveInformation; translates into a single clause with multiple subconditions
+    conditions:
+      operator: and
+      content:
         operator: and # and/or; applies to groups
         groups:
         - name: "Exchange - PII Group" ## Group Name
@@ -17,18 +17,7 @@ rule:
           - name: "All Full Names"
             confidence: Medium
           labels: # sensitivity labels
-            - Public
-            - Private
-        - name: "Exchange - Name"
-          operator: and # and/or 
-          type: 
-          - name: "U.S. Social Security Number (SSN)" # assume min count = 1
-            confidence: High
-          - name: "All Full Names"
-            confidence: Medium
-          labels:
-            - Public
-            - Private
-      extension: # -ContentExtensionMatchesWords
+            - 50979d44-1178-4a2d-a7e8-cd6729a732e5
+      extension:
         - png
         - pdf

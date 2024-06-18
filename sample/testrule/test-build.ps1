@@ -1,12 +1,13 @@
-. C:\code\dlp-policy-manager\dlp-policy-manager\internal\functions\Get-ContentConditions.ps1
+. C:\code\dlp-policy-manager\dlp-policy-manager\internal\functions\Get-Contenttest.ps1
 . C:\code\dlp-policy-manager\dlp-policy-manager\internal\functions\Get-DLPCondition.ps1
+
 $rules = @()
 $template = [string](Get-Content "C:\code\dlp-policy-manager\dlp-policy-manager\internal\templates\rule.template")
 $dpm_rule_config = Import-LocalizedData -BaseDirectory "C:\code\dlp-policy-manager\dlp-policy-manager\internal\" -FileName "rule.config.psd1"
 
 $path = '.\'
 $fileFilter = "*.yml"
-$files = Get-ChildItem -Path $Path -Filter $fileFilter
+$files = Get-ChildItem -Path $path -Filter $fileFilter
 [System.Collections.Generic.List[object]]$result = @()
 
 foreach ($file in $files) {
@@ -54,17 +55,18 @@ foreach ($file in $files) {
                 Policy = $rule.policy
                 BlockAccess = $true
             }
-            $result.Add($output)
-            Write-Output "Successfully added rule: $($output.Name)"
+            #$result = $output
+           # Write-Output "Successfully added rule: $($output.Name)"
         }
 
-        Write-Output "Failed to process file '$($file.FullName)': $_"
+        #Write-Output "Failed to process file '$($file.FullName)': $_"
 
 }
 
-return $result
+Write-Host 'Creating Rule'
+New-DLPComplianceRule @result
 
-function Build-DPMRule {
+<# function Build-DPMRule {
     [CmdletBinding()]
     param (
         [Parameter(Mandatory = $true)]
@@ -138,4 +140,4 @@ function Build-DPMRule {
         Write-Verbose "Completed processing all files. Returning results."
         return $result
     }
-}
+} #>
