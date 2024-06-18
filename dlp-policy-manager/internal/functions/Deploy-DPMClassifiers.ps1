@@ -1,5 +1,6 @@
 # Function to deploy classifiers
-function Deploy-Classifiers {
+function Deploy-DPMClassifiers {
+    [CmdletBinding()]
     param([array]$classifiers)
     foreach ($classifier in $classifiers) {
         # Implement classifier deployment logic here

@@ -16,6 +16,6 @@ $rules = @()
 $classifiers = @()
 
 #Initialize dpm configurations
+$template = [string](Get-Content "$PSScriptRoot/internal/templates/rule.template")
 $dpm_policy_config = Import-LocalizedData -BaseDirectory "$PSScriptRoot/internal/" -FileName "policy.config.psd1"
 $dpm_rule_config = Import-LocalizedData -BaseDirectory "$PSScriptRoot/internal/" -FileName "rule.config.psd1"
-$dpm_rule_template = Invoke-EPSTemplate -Template [string](Get-Content "$PSScriptRoot/internal/template/rule.template") -Binding $binding

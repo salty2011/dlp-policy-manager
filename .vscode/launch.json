@@ -10,7 +10,7 @@
             "request": "launch",
             "script": "${file}",
             "args": [],
-            "createTemporaryIntegratedConsole": true
+            "createTemporaryIntegratedConsole": false
         },
         {
             "name": "Debug Module",
@@ -20,6 +20,27 @@
             "cwd": "${workspaceFolder}",
             "args": [],
             "createTemporaryIntegratedConsole": true
+        },
+        {
+            "type": "PowerShell",
+            "request": "launch",
+            "name": "PowerShell Launch (current file)",
+            "script": "${file}",
+            "args": [],
+            "cwd": "${file}"
+        },
+        {
+            "type": "PowerShell",
+            "request": "attach",
+            "name": "PowerShell Attach to Host Process",
+            "processId": "${command.PickPSHostProcess}",
+            "runspaceId": 1
+        },
+        {
+            "type": "PowerShell",
+            "request": "launch",
+            "name": "PowerShell Interactive Session",
+            "cwd": "${workspaceRoot}"
         }
     ]
 }
