@@ -55,7 +55,8 @@ foreach ($file in $files) {
                 Policy = $rule.policy
                 BlockAccess = $true
             }
-            #$result = $output
+            $result += $output
+           # $customObjectArray = $result | ForEach-Object { [PSCustomObject]$_ }
            # Write-Output "Successfully added rule: $($output.Name)"
         }
 
