@@ -1,0 +1,28 @@
+## A DLP rule contains fine grained conditions that apply to a given policy and
+# TODO: Fleshout the yaml schema for DLP rules
+rule:
+  - name: HighConfidenceRuleTest6
+    policy: TestPol3
+    description: This is a test of yaml schema for DLP rules
+    state: enable
+    conditions:
+      operator: and
+      content:
+        operator: and # and/or; applies to groups
+        groups:
+        - name: "Exchange - PII Group" ## Group Name
+          operator: and # and/or; applies to clauses within group
+          sit: # supports multiple info types
+            - name: "U.S. Social Security Number (SSN)" # sensitive info type name; assume min count = 1
+              confidence: High
+            - name: "All Full Names"
+              confidence: Medium
+          trainable_classifier: # trainable classifiers
+            - name: "PII Classifier"
+              confidence: High
+          labels: # sensitivity labels
+            - name: "Business"
+              id: '50979d44-1178-4a2d-a7e8-cd6729a732e5'
+      extension:
+        - png
+        - pdf

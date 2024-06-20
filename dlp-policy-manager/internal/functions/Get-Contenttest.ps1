@@ -21,7 +21,7 @@ function Get-ContentConditions {
         
         # Processing sensitive types
         if ($_.type) {
-            foreach ($type in $_.type) {
+            foreach ($type in $_.type) { #TODO: Update to to use SIT
                 $group.Sensitivetypes += @{
                     Name = $type.name
                     ConfidenceLevel = $type.confidence
@@ -35,7 +35,8 @@ function Get-ContentConditions {
         if ($_.labels) {
             foreach ($label in $_.labels) {
                 $group.Labels += @{
-                    name = $label
+                    name = $label.name
+                    id = $Label.id
                     type = "Sensitivity"
                 }
             }
