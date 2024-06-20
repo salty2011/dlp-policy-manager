@@ -13,7 +13,7 @@ The purpose of this powershell module is to provide a declaritive means for depl
 
 Im sure there will be others are further development continues.
 
-## TODO
+## Backlog
 
 - [ ] Complete core functions setup
 - [ ] Review licensing

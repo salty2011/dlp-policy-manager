@@ -1,3 +1,4 @@
+# XXX - Note sure if this is still needed
 #Think this can be removed as now built into module
 function Import-ScriptConfig {
     [CmdletBinding()]
