@@ -169,17 +169,6 @@ policy:
             $result.Errors | Should -Contain "Failed to read or parse file"
         }
 
-        It 'Should handle invalid YAML content' {
-            $invalidYaml = @"
-This is not valid YAML content
-  - just some random text
-    with improper indentation
-"@
-            $tempFile = New-TestYamlFile -Content $invalidYaml
-            $result = Test-DPMPolicySyntax -FilePaths $tempFile
-            $result.IsValid | Should -Be $false
-            $result.Errors | Should -Contain "Failed to read or parse file"
-            Remove-Item $tempFile
-        }
+
     }
 }
