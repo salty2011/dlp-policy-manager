@@ -49,7 +49,7 @@ function Test-DPMPolicySyntax {
     process {
         foreach ($filePath in $FilePaths) {
             try {
-                $yamlContent = Get-Content -Path $filePath -Raw -ErrorAction Stop
+                $yamlContent = Get-Content -Path $filePath -Raw -ErrorAction Stop #BUG - Pointing at directory results in failure
                 $yamlData = ConvertFrom-Yaml $yamlContent
             }
             catch {
