@@ -123,3 +123,5 @@ PrivateData = @{
 # DefaultCommandPrefix = ''
 
 }
+
+FunctionsToExport = '*'
