@@ -1,3 +1,4 @@
 ﻿publish
 TestResults
 /testenv/*
+.aider*
