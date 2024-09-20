@@ -1,0 +1,31 @@
+Name: "Confidential Data Policy"
+Comment: "This policy protects confidential data from being shared externally"
+Mode: "Enable"
+Priority: 1
+ExchangeLocation:
+  - "All"
+SharePointLocation:
+  - "All"
+OneDriveLocation:
+  - "All"
+TeamsLocation:
+  - "All"
+Rules:
+  - Name: "Detect Confidential Data"
+    AccessScope: "InOrganization"
+    BlockAccess: false
+    NotifyUser: true
+    IncidentReportContent:
+      - "All"
+    ContentContainsSensitiveInformation:
+      - Name: "Credit Card Number"
+        MaximumConfidence: 100
+        MinimumConfidence: 75
+        ClassifierType: "Fingerprint"
+      - Name: "U.S. Social Security Number (SSN)"
+        MaximumConfidence: 100
+        MinimumConfidence: 85
+        ClassifierType: "Fingerprint"
+    Actions:
+      - NotifyUser:
+          NotificationText: "This message contains confidential information. Please review before sending externally."
