@@ -25,25 +25,44 @@ function Convert-HashtableToArray {
     #>
 
     [CmdletBinding()]
+    [OutputType([PSCustomObject[]])]
     param (
-        [Parameter(Mandatory = $true)]
-        [System.Collections.Generic.List[hashtable]]$HashtableList
+        [Parameter(Mandatory = $true, ValueFromPipeline = $true)]
+        [hashtable[]]$HashtableList
     )
-    
-    $customObjectArray = @()
-    
-    try {
-        foreach ($hashtable in $HashtableList) {
-            $customObject = New-Object -TypeName PSObject
-            foreach ($key in $hashtable.Keys) {
-                $customObject | Add-Member -MemberType NoteProperty -Name $key -Value $hashtable[$key]
-            }
-            $customObjectArray += $customObject
-        }
-    } catch {
-        Write-Error "Failed to convert hashtable to custom object array: $_"
-        return $null
+
+    begin {
+        $customObjectArray = [System.Collections.ArrayList]::new()
     }
-    
-    return $customObjectArray
+
+    process {
+        try {
+            foreach ($hashtable in $HashtableList) {
+                Write-Debug "Processing hashtable: $($hashtable | ConvertTo-Json)"
+
+                if ($null -eq $hashtable) {
+                    Write-Debug "Skipping null hashtable"
+                    continue
+                }
+
+                $properties = @{}
+                foreach ($key in $hashtable.Keys) {
+                    $properties[$key] = $hashtable[$key]
+                }
+
+                $newObject = [PSCustomObject]$properties
+                Write-Debug "Created new object: $($newObject | ConvertTo-Json)"
+                [void]$customObjectArray.Add($newObject)
+                Write-Debug "Added object to array. Current count: $($customObjectArray.Count)"
+            }
+        } catch {
+            Write-Error "Failed to convert hashtable to custom object array: $_"
+            return
+        }
+    }
+
+    end {
+        Write-Debug "Returning array with count: $($customObjectArray.Count)"
+        return ,[array]($customObjectArray.ToArray())
+    }
 }

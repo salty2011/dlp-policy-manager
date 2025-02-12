@@ -51,7 +51,12 @@ Description = 'Create DLP Policies as Code'
 # ProcessorArchitecture = ''
 
 # Modules that must be imported into the global environment prior to importing this module
-# RequiredModules = @()
+RequiredModules = @(
+    @{
+        ModuleName = 'powershell-yaml'
+        ModuleVersion = '0.4.2' # Use the minimum version you need
+    }
+)
 
 # Assemblies that must be loaded prior to importing this module
 # RequiredAssemblies = @()

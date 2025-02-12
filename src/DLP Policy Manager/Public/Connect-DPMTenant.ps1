@@ -30,6 +30,10 @@ function Connect-DPMTenant {
     [CmdletBinding()]
     param (
         [Parameter(Mandatory = $false)]
+        [ValidateScript({
+            if (Test-Path $_) { $true }
+            else { throw "Configuration file not found at: $_" }
+        })]
         [string]$Path = '.\env.yml',
 
         [Parameter(Mandatory = $true)]
@@ -38,6 +42,7 @@ function Connect-DPMTenant {
 
     process {
         try {
+            Write-Verbose "Reading configuration from $Path"
             # Read and convert the YAML file into a PowerShell object
             $envConfigs = Get-Content -Path $Path | ConvertFrom-Yaml
 
@@ -46,14 +51,29 @@ function Connect-DPMTenant {
 
             # Check if tenant data was found
             if ($selectedTenant) {
+                # Validate required properties
+                $requiredProps = @('AppID', 'Thumbprint', 'Organization')
+                $missingProps = $requiredProps | Where-Object { -not $selectedTenant.$_ }
+
+                if ($missingProps) {
+                    throw "Missing required properties in tenant configuration: $($missingProps -join ', ')"
+                }
+
+                Write-Verbose "Attempting to connect to $Environment ($($selectedTenant.Organization))"
                 # Using the found tenant data to connect
-                Connect-IPPSSession -AppId $selectedTenant.AppID -CertificateThumbprint $selectedTenant.Thumbprint -Organization $selectedTenant.Organization *> $null
+                $connection = Connect-IPPSSession -AppId $selectedTenant.AppID `
+                                                -CertificateThumbprint $selectedTenant.Thumbprint `
+                                                -Organization $selectedTenant.Organization `
+                                                -ErrorAction Stop *> $null
+
                 Write-Output "Connected to $Environment on $($selectedTenant.Organization)"
             } else {
                 Write-Warning "No tenant configuration found for environment: $Environment"
+                Write-Verbose "Available environments: $($envConfigs.tenant.Name -join ', ')"
             }
         } catch {
             Write-Error "An error occurred while trying to connect to the tenant: $_"
+            Write-Verbose $_.ScriptStackTrace
         }
     }
 }

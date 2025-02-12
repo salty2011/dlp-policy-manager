@@ -16,3 +16,5 @@ Thumbs.db
 ################
 /test_policy/
 /ZZ_Refernce/
+/Modules
+/.devcontainer/psmodules/

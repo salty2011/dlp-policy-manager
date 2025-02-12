@@ -1,0 +1,5 @@
+Az
+Microsoft.Graph
+ExchangeOnlineManagement
+Pester
+powershell-yaml
