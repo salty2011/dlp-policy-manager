@@ -16,14 +16,25 @@ function Get-DLPaCClassifiers {
     $ippspAdapter = [DLPaCIPPSPAdapter]::new($script:Logger)
 
     try {
-        # Connect to Exchange Online
-        $script:Logger.LogInfo("Connecting to Exchange Online")
-        $connected = $ippspAdapter.Connect()
-        
+        # Prefer existing session when manual session is active to avoid extra prompts
+        $connected = $false
+        if ($script:ManualSessionActive) {
+            try {
+                $null = Get-IPPSSession -ErrorAction Stop
+                $connected = $true
+                $script:Logger.LogInfo("Using existing Exchange Online session (manual session active)")
+            } catch {
+                $connected = $false
+            }
+        }
         if (-not $connected) {
-            $errorMessage = "Failed to connect to Exchange Online"
-            $script:Logger.LogError($errorMessage)
-            throw $errorMessage
+            # Ensure connection (idempotent; no-op if already connected)
+            $connected = $ippspAdapter.Connect()
+            if (-not $connected) {
+                $errorMessage = "Failed to connect to Exchange Online"
+                $script:Logger.LogError($errorMessage)
+                throw $errorMessage
+            }
         }
 
         # Try to use Get-DlpSensitiveInformationType if available

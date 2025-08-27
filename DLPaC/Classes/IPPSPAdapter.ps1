@@ -33,8 +33,6 @@ class DLPaCIPPSPAdapter {
                         $this.IsConnected = $false
                     }
                 }
-    
-                $this.Logger.LogInfo("Connecting to Exchange Online...")
                 
             $connectParams = @{
                 ErrorAction = "Stop"
@@ -53,7 +51,7 @@ class DLPaCIPPSPAdapter {
                 $this.ConnectionMethod = "Interactive"
             }
             
-            # Check if already connected
+            # Check if already connected (avoid reconnect and banner)
             try {
                 $null = Get-IPPSSession -ErrorAction Stop
                 $this.Logger.LogInfo("Already connected to Exchange Online")
@@ -65,6 +63,7 @@ class DLPaCIPPSPAdapter {
             }
             
             # Connect to Exchange Online
+            $this.Logger.LogInfo("Connecting to Exchange Online...")
             Connect-IPPSSession @connectParams
             
             $this.Logger.LogInfo("Successfully connected to Exchange Online")
