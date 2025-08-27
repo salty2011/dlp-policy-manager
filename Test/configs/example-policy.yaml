@@ -1,0 +1,37 @@
+# Example DLP policy configuration for financial data protection
+Policies:
+  - Name: "Financial SuperData Protection"
+    Mode: "Enable"  # Enable, Test, or Disable
+    Priority: 0
+    Description: "Protects financial data from unauthorized sharing"
+    
+    # Policy scope
+    Scope:
+      Exchange: ["All"]
+    #  SharePoint: ["All"]
+    #  OneDrive: ["All"]
+    #  Teams: ["All"]
+    #  Devices: []
+      
+    # Policy rules
+    Rules:
+    #  - Name: "Credit Card Rule"
+    #    Conditions:
+    #      - Type: "ContentContainsPattern"
+    #       Pattern: "CreditCardNumber"
+    #        MinCount: 1
+    #      - Type: "RecipientDomain"
+    #        Operator: "NotEquals"
+    #        Value: "contoso.com"
+    #    Actions:
+    #      - Type: "BlockAccess"
+    #        NotifyUser: true
+    #        NotifyAdmin: true
+      - Name: "Banking Information Rule"
+        Conditions:
+          - Type: "SensitiveInfoType"
+            InfoType: "Australia Bank Account Number"
+            MinCount: 1
+        Actions:
+          - Type: "Encrypt"
+            encryptionMethod: "Encrypt" # Using rmsTemplate instead of EncryptionMethod

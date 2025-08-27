@@ -1,0 +1,41 @@
+# Example DLP policy configuration for financial data protection
+policies:
+  - name: "Financial Data Protection"
+    mode: "Enable"  # Enable, Test, or Disable
+    priority: 1
+    description: "Protects financial data from unauthorized sharing"
+    
+    # Policy scope
+    scope:
+      exchange: true
+      sharepoint: true
+      onedrive: true
+      teams: true
+      devices: false
+      
+    # Policy rules
+    rules:
+      - name: "Credit Card Rule"
+        conditions:
+          - type: "ContentContainsPattern"
+            pattern: "CreditCardNumber"
+            minCount: 1
+            
+          - type: "RecipientDomain"
+            operator: "NotEquals"
+            value: "contoso.com"
+            
+        actions:
+          - type: "BlockAccess"
+            notifyUser: true
+            notifyAdmin: true
+            
+      - name: "Banking Information Rule"
+        conditions:
+          - type: "SensitiveInfoType"
+            infoType: "BankAccountNumber"
+            minCount: 1
+            
+        actions:
+          - type: "Encrypt"
+            encryptionMethod: "Office365Message"

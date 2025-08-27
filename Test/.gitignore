@@ -1,0 +1,14 @@
+# DLPaC state and logs
+.dlpac/state/
+.dlpac/logs/
+.dlpac/plans/
+
+# Tenant state cache
+.tenant-cache.json
+
+# PowerShell module files
+*.psd1
+*.psm1
+
+# Credentials
+*.cred
