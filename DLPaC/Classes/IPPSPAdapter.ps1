@@ -20,9 +20,22 @@ class DLPaCIPPSPAdapter {
     }
     
     [bool] Connect([string]$TenantId, [System.Management.Automation.PSCredential]$Credential) {
-        try {
-            $this.Logger.LogInfo("Connecting to Exchange Online...")
-            
+            try {
+                # Idempotent early return when already connected (and session still valid)
+                if ($this.IsConnected) {
+                    try {
+                        $null = Get-IPPSSession -ErrorAction Stop
+                        $this.Logger.LogInfo("Already connected to Exchange Online")
+                        return $true
+                    }
+                    catch {
+                        $this.Logger.LogWarning("IsConnected cache was true but no IPPS session found; reconnecting")
+                        $this.IsConnected = $false
+                    }
+                }
+    
+                $this.Logger.LogInfo("Connecting to Exchange Online...")
+                
             $connectParams = @{
                 ErrorAction = "Stop"
             }
@@ -67,11 +80,25 @@ class DLPaCIPPSPAdapter {
     
     [void] Disconnect() {
         try {
-            if ($this.IsConnected) {
+            # Determine if a session actually exists regardless of this instance flag
+            $sessionExists = $false
+            try {
+                $null = Get-IPPSSession -ErrorAction Stop
+                $sessionExists = $true
+            }
+            catch {
+                $sessionExists = $false
+            }
+
+            if ($this.IsConnected -or $sessionExists) {
                 $this.Logger.LogInfo("Disconnecting from Exchange Online...")
                 Disconnect-ExchangeOnline -Confirm:$false -ErrorAction SilentlyContinue
                 $this.IsConnected = $false
                 $this.Logger.LogInfo("Disconnected from Exchange Online")
+            }
+            else {
+                $this.Logger.LogInfo("No active Exchange Online session to disconnect")
+                $this.IsConnected = $false
             }
         }
         catch {

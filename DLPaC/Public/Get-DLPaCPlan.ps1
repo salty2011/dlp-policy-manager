@@ -374,8 +374,8 @@ function Get-DLPaCPlan {
             throw $_
         }
         finally {
-            # Disconnect from Exchange Online if connected
-            if (-not $NoConnect -and $ippspAdapter.IsConnected) {
+            # Disconnect from Exchange Online only when not in a manual session
+            if (-not $NoConnect -and -not $script:ManualSessionActive -and $ippspAdapter.IsConnected) {
                 $script:Logger.LogInfo("Disconnecting from Exchange Online")
                 $ippspAdapter.Disconnect()
             }

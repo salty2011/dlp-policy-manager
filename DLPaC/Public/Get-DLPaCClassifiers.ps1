@@ -49,8 +49,8 @@ function Get-DLPaCClassifiers {
         }
     }
     finally {
-        # Disconnect from Exchange Online if connected
-        if ($ippspAdapter.IsConnected) {
+        # Disconnect from Exchange Online only when not in a manual session
+        if (-not $script:ManualSessionActive -and $ippspAdapter.IsConnected) {
             $script:Logger.LogInfo("Disconnecting from Exchange Online")
             $ippspAdapter.Disconnect()
         }

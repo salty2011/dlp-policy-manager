@@ -160,15 +160,7 @@ function Invoke-DLPaCApply {
                 }
             }
             
-            # Connect to Exchange Online
-            $script:Logger.LogInfo("Connecting to Exchange Online")
-            $connected = $ippspAdapter.Connect()
-            
-            if (-not $connected) {
-                $errorMessage = "Failed to connect to Exchange Online"
-                $script:Logger.LogError($errorMessage)
-                throw $errorMessage
-            }
+            # Connection already ensured earlier; skipping redundant connect
             
             # Load state
             $statePath = $script:StatePath
@@ -409,8 +401,8 @@ function Invoke-DLPaCApply {
                 $state.Unlock()
             }
             
-            # Disconnect from Exchange Online if connected
-            if ($ippspAdapter.IsConnected) {
+            # Disconnect from Exchange Online only when not in a manual session
+            if (-not $script:ManualSessionActive -and $ippspAdapter.IsConnected) {
                 $script:Logger.LogInfo("Disconnecting from Exchange Online")
                 $ippspAdapter.Disconnect()
             }

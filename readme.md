@@ -401,3 +401,29 @@ Use the provided scripts for debugging YAML and schema issues:
 - `Test-YamlValidation.ps1`
 
 Run these scripts to validate and troubleshoot your configurations.
+## Optional: Manual Session Management
+
+For long workflows, you can avoid repeated authentication prompts by manually managing a single Exchange Online session.
+
+- Start session once:
+```PowerShell
+Connect-DLPaC
+```
+
+- Run your DLPaC workflow:
+```PowerShell
+Initialize-DLPaCWorkspace -Path "./dlp-workspace" -TenantName "contoso.onmicrosoft.com" -Environment "production"
+Get-DLPaCPlan -Path "./dlp-workspace/configs" -Detailed
+Invoke-DLPaCApply -AutoApprove
+# ... or cleanup:
+Invoke-DLPaCDestroy -AutoApprove
+```
+
+- End session:
+```PowerShell
+Disconnect-DLPaC
+```
+
+Notes:
+- Standalone cmdlets still auto-connect, and will auto-disconnect unless a manual session is active.
+- Connect/Disconnect are idempotent; calling them multiple times is safe.

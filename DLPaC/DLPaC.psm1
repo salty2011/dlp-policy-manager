@@ -17,6 +17,7 @@ $script:LogPath = $null
 $script:SchemaPath = Join-Path $PSScriptRoot 'Schemas'
 $script:IPPSPSession = $null
 $script:LogLevel = 'Information' # Default log level
+$script:ManualSessionActive = $false
 
 # Load module components
 Write-Verbose "Loading DLPaC Module v$script:ModuleVersion"
@@ -73,6 +74,8 @@ foreach ($Function in $PublicFunctions) {
     }
     catch {
         Write-Error "Failed to load public function $($Function.BaseName) : $_"
+        Write-Warning "Error details: $($_.Exception.Message)"
+        Write-Warning "Script Stack Trace: $($_.ScriptStackTrace)"
     }
 }
 
