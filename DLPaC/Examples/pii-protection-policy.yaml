@@ -1,0 +1,55 @@
+# Example DLP policy configuration for PII protection
+policies:
+  - name: "PII Protection Policy"
+    mode: "Enable"
+    priority: 2
+    description: "Protects personally identifiable information from unauthorized sharing"
+    
+    # Policy scope
+    scope:
+      exchange: true
+      sharepoint: true
+      onedrive: true
+      teams: true
+      devices: true
+      
+    # Policy rules
+    rules:
+      - name: "SSN Protection Rule"
+        conditions:
+          - type: "SensitiveInfoType"
+            infoType: "U.S. Social Security Number (SSN)"
+            minCount: 1
+            
+          - type: "AccessScope"
+            value: "NotInOrganization"
+            
+        actions:
+          - type: "BlockAccess"
+            notifyUser: true
+            notifyAdmin: true
+            
+      - name: "Multiple PII Types Rule"
+        conditions:
+          - type: "SensitiveInfoType"
+            infoType: "U.S. Individual Taxpayer Identification Number (ITIN)"
+            minCount: 1
+            
+          - type: "SensitiveInfoType"
+            infoType: "U.S. Driver's License Number"
+            minCount: 1
+            
+        actions:
+          - type: "Encrypt"
+            encryptionMethod: "Office365Message"
+            
+      - name: "Passport Number Rule"
+        conditions:
+          - type: "SensitiveInfoType"
+            infoType: "U.S. Passport Number"
+            minCount: 1
+            
+        actions:
+          - type: "BlockAccess"
+            notifyUser: true
+            notifyAdmin: false

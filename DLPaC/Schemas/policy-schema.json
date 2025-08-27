@@ -1,0 +1,190 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": ["policies"],
+  "properties": {
+    "policies": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "mode", "rules"],
+        "properties": {
+          "name": { 
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64
+          },
+          "mode": { 
+            "enum": ["Enable", "Test", "Disable"] 
+          },
+          "priority": { 
+            "type": "integer", 
+            "minimum": 0 
+          },
+          "description": { 
+            "type": "string",
+            "maxLength": 256
+          },
+          "scope": {
+            "type": "object",
+            "properties": {
+              "exchange": {
+                "type": "array",
+                "items": { "type": "string" },
+                "description": "List of Exchange users/groups or 'All'"
+              },
+              "sharepoint": {
+                "type": "array",
+                "items": { "type": "string" },
+                "description": "List of SharePoint sites or 'All'"
+              },
+              "onedrive": {
+                "type": "array",
+                "items": { "type": "string" },
+                "description": "List of OneDrive users or 'All'"
+              },
+              "teams": {
+                "type": "array",
+                "items": { "type": "string" },
+                "description": "List of Teams groups or 'All'"
+              },
+              "devices": {
+                "type": "array",
+                "items": { "type": "string" },
+                "description": "List of device groups or 'All'"
+              }
+            }
+          },
+          "rules": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["name", "conditions"],
+              "properties": {
+                "name": { 
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 64
+                },
+                "conditions": {
+                  "type": "array",
+                  
+                  "items": {
+                    "type": "object",
+                    "required": ["type"],
+                    "properties": {
+                      "type": {
+                        "enum": ["ContentContainsPattern", "SensitiveInfoType", "RecipientDomain", "AccessScope"]
+                      },
+                      "pattern": {
+                        "type": "string",
+                        "description": "Pattern name for ContentContainsPattern type"
+                      },
+                      "infoType": {
+                        "type": "string",
+                        "description": "Sensitive information type name for SensitiveInfoType type"
+                      },
+                      "minCount": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "description": "Minimum count of occurrences required"
+                      },
+                      "operator": {
+                        "enum": ["Equals", "NotEquals"],
+                        "description": "Operator for RecipientDomain type"
+                      },
+                      "value": {
+                        "type": "string",
+                        "description": "Value for RecipientDomain or AccessScope type"
+                      }
+                    },
+                    "allOf": [
+                      {
+                        "if": {
+                          "properties": { "type": { "enum": ["ContentContainsPattern"] } }
+                        },
+                        "then": {
+                          "required": ["pattern"]
+                        }
+                      },
+                      {
+                        "if": {
+                          "properties": { "type": { "enum": ["SensitiveInfoType"] } }
+                        },
+                        "then": {
+                          "required": ["infoType"]
+                        }
+                      },
+                      {
+                        "if": {
+                          "properties": { "type": { "enum": ["RecipientDomain"] } }
+                        },
+                        "then": {
+                          "required": ["operator", "value"]
+                        }
+                      },
+                      {
+                        "if": {
+                          "properties": { "type": { "enum": ["AccessScope"] } }
+                        },
+                        "then": {
+                          "required": ["value"]
+                        }
+                      }
+                    ]
+                  }
+                },
+                "actions": {
+                  "type": "array",
+                  
+                  "items": {
+                    "type": "object",
+                    "required": ["type"],
+                    "properties": {
+                      "type": {
+                        "enum": ["BlockAccess", "Encrypt"]
+                      },
+                      "notifyUser": {
+                        "type": "boolean",
+                        "description": "Whether to notify the user for BlockAccess type"
+                      },
+                      "notifyAdmin": {
+                        "type": "boolean",
+                        "description": "Whether to notify the admin for BlockAccess type"
+                      },
+                      "encryptionMethod": {
+                        "type": "string",
+                        "description": "Encryption method for Encrypt type (deprecated, use rmsTemplate instead)"
+                      },
+                      "rmsTemplate": {
+                        "type": "string",
+                        "description": "RMS template for Encrypt type"
+                      },
+                      "rmstemplate": {
+                        "type": "string",
+                        "description": "RMS template for Encrypt type (lowercase variant)"
+                      }
+                    },
+                    "allOf": [
+                      {
+                        "if": {
+                          "properties": { "type": { "enum": ["Encrypt"] } }
+                        },
+                        "then": {
+                          "anyOf": [
+                            { "required": ["encryptionMethod"] },
+                            { "required": ["rmsTemplate"] }
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

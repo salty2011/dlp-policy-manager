@@ -1,3 +1,0 @@
-ExchangeOnlineManagement=>3.9.0
-powershell-yaml=0.40.7
-EPS=>1.0.0

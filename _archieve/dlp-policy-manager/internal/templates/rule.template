@@ -1,7 +1,0 @@
-{
-    "Version": "1.0",
-    "Condition": {
-        "Operator": "<%= $Operator %>",
-        "SubConditions": <%= ConvertTo-JSON -InputObject $SubConditions -Depth 10 -Compress %>
-    }
-}
