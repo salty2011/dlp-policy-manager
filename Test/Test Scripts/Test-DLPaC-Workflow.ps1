@@ -3,7 +3,7 @@
 param (
     [Parameter()]
     [string]$ConfigPath = "../Test/configs/example-policy.yaml",
-    
+
     [Parameter()]
     [switch]$AutoApprove
 )
@@ -16,15 +16,16 @@ if (Get-Module DLPaC) {
 
 # Import the module
 Write-Host "Importing DLPaC module..." -ForegroundColor Cyan
-Import-Module ./DLPaC/DLPaC.psd1 -Force
+Import-Module ../../DLPaC/DLPaC.psd1 -Force
+
+# Initialize workspace
+Write-Host "`nInitializing workspace..." -ForegroundColor Cyan
+Initialize-DLPaCWorkspace -Path ../Test -TenantName 'Test' -Environment 'Dev' -Force
 
 Write-Host "`nConnecting to Exchange Online (manual session)..." -ForegroundColor Cyan
 Connect-DLPaC
 
 try {
-# Initialize workspace
-Write-Host "`nInitializing workspace..." -ForegroundColor Cyan
-Initialize-DLPaCWorkspace -Path ./Test -TenantName 'Test' -Environment 'Dev' -Force
  
 # Test configuration
 Write-Host "`nTesting configuration..." -ForegroundColor Cyan
