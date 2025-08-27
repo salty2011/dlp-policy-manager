@@ -18,10 +18,14 @@ if (Get-Module DLPaC) {
 Write-Host "Importing DLPaC module..." -ForegroundColor Cyan
 Import-Module ./DLPaC/DLPaC.psd1 -Force
 
+Write-Host "`nConnecting to Exchange Online (manual session)..." -ForegroundColor Cyan
+Connect-DLPaC
+
+try {
 # Initialize workspace
 Write-Host "`nInitializing workspace..." -ForegroundColor Cyan
 Initialize-DLPaCWorkspace -Path ./Test -TenantName 'Test' -Environment 'Dev' -Force
-
+ 
 # Test configuration
 Write-Host "`nTesting configuration..." -ForegroundColor Cyan
 $testResult = Test-DLPaCConfiguration -Path $ConfigPath
@@ -29,11 +33,11 @@ if ($testResult.InvalidFiles -gt 0) {
     Write-Host "Configuration validation failed:" -ForegroundColor Red
     foreach ($result in $testResult.Results) {
         if (-not $result.Valid) {
-            foreach ($error in $result.SchemaErrors) {
-                Write-Host "  - $error" -ForegroundColor Red
+            foreach ($schemaError in $result.SchemaErrors) {
+                Write-Host "  - $schemaError" -ForegroundColor Red
             }
-            foreach ($error in $result.LogicalErrors) {
-                Write-Host "  - $error" -ForegroundColor Red
+            foreach ($logicalError in $result.LogicalErrors) {
+                Write-Host "  - $logicalError" -ForegroundColor Red
             }
         }
     }
@@ -88,10 +92,15 @@ if (-not $AutoApprove) {
 # Apply the plan
 Write-Host "`nApplying plan..." -ForegroundColor Cyan
 $applyResult = Invoke-DLPaCApply -PlanPath $planPath -AutoApprove
-
+ 
 # Display results
 Write-Host "`nPlan application completed!" -ForegroundColor Green
 Write-Host "Total Changes: $($applyResult.TotalChanges)"
 Write-Host "Success: $($applyResult.SuccessCount)"
 Write-Host "Failure: $($applyResult.FailureCount)"
 Write-Host "Completed At: $($applyResult.CompletedAt)"
+}
+finally {
+    Write-Host "`nDisconnecting DLPaC manual session..." -ForegroundColor Cyan
+    Disconnect-DLPaC
+}
