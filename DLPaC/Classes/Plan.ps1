@@ -69,6 +69,7 @@ class DLPaCPlan {
     [datetime] $CacheTimestamp
     [bool] $UsedCacheState
     [System.Collections.Hashtable] $Metadata
+    [object[]] $CompatibilityFindings
     
     DLPaCPlan() {
         $this.Changes = [System.Collections.ArrayList]::new()
@@ -79,6 +80,7 @@ class DLPaCPlan {
             version = "1.0.0"
             planId = [guid]::NewGuid().ToString()
         }
+        $this.CompatibilityFindings = @()
     }
     
     DLPaCPlan([string]$PlanPath) {
@@ -91,6 +93,7 @@ class DLPaCPlan {
             version = "1.0.0"
             planId = [guid]::NewGuid().ToString()
         }
+        $this.CompatibilityFindings = @()
     }
 
     [void] SetCacheInfo([datetime]$Timestamp, [bool]$UsedCache) {
@@ -186,6 +189,7 @@ class DLPaCPlan {
                 timestamp = if ($this.CacheTimestamp) { $this.CacheTimestamp.ToString('o') } else { $null }
                 usedCache = $this.UsedCacheState
             }
+            compatibilityFindings = $this.CompatibilityFindings
             changes = $this.Changes | ForEach-Object {
                 [PSCustomObject]@{
                     operation = $_.Operation
@@ -255,6 +259,10 @@ class DLPaCPlan {
                         $plan.CacheTimestamp = [datetime]$planObject.cacheInfo.timestamp
                     }
                     $plan.UsedCacheState = [bool]$planObject.cacheInfo.usedCache
+                }
+                
+                if ($planObject.compatibilityFindings) {
+                    $plan.CompatibilityFindings = $planObject.compatibilityFindings
                 }
                 
                 if ($planObject.changes) {

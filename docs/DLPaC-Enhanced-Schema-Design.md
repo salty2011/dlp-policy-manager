@@ -780,3 +780,120 @@ function Convert-DlpLegacyRule {
 - **Trade-offs**: Processing overhead vs. consistency and reliability
 
 This design provides a solid foundation for advanced DLP rule authoring while maintaining backward compatibility and enabling future extensibility.
+
+## Compatibility Validation Layer
+
+### Purpose
+Pre-deployment detection of unsupported action/condition/scope combinations during planning and configuration testing. This layer prevents generating plans that would fail in Microsoft 365 by validating the normalized rule AST against a set of compatibility rules.
+
+- Runs during planning via [PowerShell.Get-DLPaCPlan()](DLPaC/Public/Get-DLPaCPlan.ps1:1) and during configuration validation via [PowerShell.Test-DLPaCConfiguration()](DLPaC/Public/Test-DLPaCConfiguration.ps1:1).
+- Findings with severity "error" abort the operation; "warn" findings are logged and the process continues.
+
+### Files and Locations
+- Defaults (module-provided): [DLPaC/Rules/compatibility-rules.yaml](DLPaC/Rules/compatibility-rules.yaml:1)
+- Workspace overrides (organization-specific): [.dlpac/compatibility-overrides.yaml](.dlpac/compatibility-overrides.yaml:1)
+
+When a workspace is initialized with [PowerShell.Initialize-DLPaCWorkspace()](DLPaC/Public/Initialize-DLPaCWorkspace.ps1:1), an overrides file is scaffolded under `.dlpac/` for local customization.
+
+### Rule Schema
+Each rule is defined in YAML with the following fields and behavior:
+
+- id: Unique, case-insensitive identifier (string).
+- description: Human-readable description of the compatibility constraint.
+- severity: One of "error" or "warn".
+  - error: Aborts [PowerShell.Get-DLPaCPlan()](DLPaC/Public/Get-DLPaCPlan.ps1:1) and [PowerShell.Test-DLPaCConfiguration()](DLPaC/Public/Test-DLPaCConfiguration.ps1:1).
+  - warn: Logs finding via [PowerShell.DLPaCLogger](DLPaC/Classes/Logger.ps1:1) and proceeds.
+- enabled: Boolean, default true.
+- match: Matching criteria against the normalized AST:
+  - actions_any_of: One or more action identifiers (case-insensitive).
+  - conditions_any_of: Optional; one or more condition identifiers (case-insensitive).
+  - scopes_any_of: One or more workload scopes (e.g., sharepoint, onedrive, exchange, teams, devices).
+  - scopes_all_of: All listed scopes must be present.
+- message: End-user facing message explaining the incompatibility.
+- suggestion: Operator/developer guidance to resolve or avoid the issue.
+
+Behavioral notes:
+- All identifiers are case-insensitive.
+- Single scalar values are coerced to arrays for actions/conditions/scopes.
+- Rules evaluate against the normalized AST produced by [PowerShell.Convert-DlpYamlToRuleAst()](DLPaC/Private/Convert-DlpYamlToRuleAst.ps1:1); no raw YAML parsing.
+
+### Merge and Precedence
+- Defaults are loaded first from [DLPaC/Rules/compatibility-rules.yaml](DLPaC/Rules/compatibility-rules.yaml:1).
+- Workspace overrides in [.dlpac/compatibility-overrides.yaml](.dlpac/compatibility-overrides.yaml:1):
+  - Replace-by-id semantics: an override with the same id replaces the default (you can modify severity, enabled, messages, or match).
+  - New rules can be added by specifying new ids.
+  - Rules can be disabled by setting enabled: false.
+- Effective rules = defaults merged with overrides; only enabled rules are enforced.
+
+### Integrations
+- Planner: [PowerShell.Get-DLPaCPlan()](DLPaC/Public/Get-DLPaCPlan.ps1:1) runs compatibility validation after building the normalized AST. Plans abort on "error" findings; "warn" findings persist.
+- Config test: [PowerShell.Test-DLPaCConfiguration()](DLPaC/Public/Test-DLPaCConfiguration.ps1:1) fails on "error" findings.
+- Findings are persisted on the plan as [PowerShell.DLPaCPlan.CompatibilityFindings](DLPaC/Classes/Plan.ps1:1) for later inspection and reporting.
+
+### Baseline rule example (SPO/OneDrive Encrypt unsupported)
+The following baseline illustrates a rule that flags Encrypt actions in SharePoint and OneDrive as incompatible:
+
+```yaml
+# From defaults: DLPaC/Rules/compatibility-rules.yaml
+- id: "encrypt-spo-od-unsupported"
+  description: "Encrypt action is not supported for SharePoint Online and OneDrive scopes"
+  severity: "error"
+  enabled: true
+  match:
+    actions_any_of: ["encrypt"]
+    scopes_any_of: ["sharepoint", "onedrive"]
+  message: "Encrypt is not supported for SharePoint or OneDrive."
+  suggestion: "Use BlockAccess or a supported action for SPO/OneDrive, or scope Encrypt to Exchange/Teams only."
+```
+
+Reference test demonstrating this condition: [Test/configs/incompatible-encrypt-spo-od.yaml](Test/configs/incompatible-encrypt-spo-od.yaml:1)
+
+### Workspace overrides (disable or downgrade severity)
+Place org-specific overrides in [.dlpac/compatibility-overrides.yaml](.dlpac/compatibility-overrides.yaml:1).
+
+- Disable the baseline rule entirely:
+```yaml
+- id: "encrypt-spo-od-unsupported"
+  enabled: false
+  description: "Org override: temporarily disable SPO/OD Encrypt compatibility check"
+```
+
+- Downgrade severity from error to warn and adjust guidance:
+```yaml
+- id: "encrypt-spo-od-unsupported"
+  severity: "warn"
+  message: "Encrypt on SPO/OD is discouraged in this environment."
+  suggestion: "Proceed only for pilot sites; plan migration to BlockAccess where feasible."
+```
+
+- Add a new org-specific rule:
+```yaml
+- id: "block-devices-scope-constraint"
+  description: "BlockAccess with devices scope requires notifyUser"
+  severity: "warn"
+  enabled: true
+  match:
+    actions_any_of: ["blockaccess"]
+    scopes_any_of: ["devices"]
+    conditions_any_of: []  # optional
+  message: "Blocking on devices without user notification reduces effectiveness."
+  suggestion: "Set actions.notifyUser: true for device-scoped blocking."
+```
+
+### Notes
+- Source of truth is the normalized AST from [PowerShell.Convert-DlpYamlToRuleAst()](DLPaC/Private/Convert-DlpYamlToRuleAst.ps1:1); rules evaluate against canonicalized identifiers and shapes.
+- Logging uses [PowerShell.DLPaCLogger](DLPaC/Classes/Logger.ps1:1). Do not use Write-Host in cmdlets.
+- YAML keys are normalized and non-array nodes are coerced to arrays earlier in the pipeline by the normalizer in [DLPaC/Private/Normalize-Keys.ps1](DLPaC/Private/Normalize-Keys.ps1:1).
+
+### Offline CLI examples
+Run planning and validation without tenant connectivity to surface compatibility findings early:
+
+```powershell
+# Validate configuration (schema + compatibility); fails on error findings
+Test-DLPaCConfiguration -Path "./dlp-workspace/configs" -Detailed
+
+# Generate a plan offline; aborts on error findings, persists warnings
+Get-DLPaCPlan -ConfigPath "./dlp-workspace/configs" -NoConnect -Detailed
+```
+
+Findings are saved on the plan object under [PowerShell.DLPaCPlan.CompatibilityFindings](DLPaC/Classes/Plan.ps1:1) and are also logged via [PowerShell.DLPaCLogger](DLPaC/Classes/Logger.ps1:1).

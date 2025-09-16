@@ -97,16 +97,69 @@ function Invoke-DLPaCApply {
                 throw $errorMessage
             }
             
-            $planFiles = Get-ChildItem -Path $plansDir -Filter "plan-*.json" | Sort-Object LastWriteTime -Descending
+            # Find the most recent planning attempt (success or failure) by checking all plan and status files
+            $allPlanFiles = Get-ChildItem -Path $plansDir -Filter "plan-*.json" -ErrorAction SilentlyContinue
+            $allStatusFiles = Get-ChildItem -Path $plansDir -Filter "plan-*.status.json" -ErrorAction SilentlyContinue
             
-            if ($planFiles.Count -eq 0) {
+            if ($allPlanFiles.Count -eq 0 -and $allStatusFiles.Count -eq 0) {
                 $errorMessage = "No plan files found in $plansDir. Run Get-DLPaCPlan first."
                 $script:Logger.LogError($errorMessage)
                 throw $errorMessage
             }
             
-            $PlanPath = $planFiles[0].FullName
-            $script:Logger.LogInfo("Using most recent plan file: $PlanPath")
+            # Get the most recent planning attempt by timestamp (from filename)
+            $mostRecentTimestamp = $null
+            $mostRecentPlanPath = $null
+            $mostRecentStatusPath = $null
+            
+            # Check all status files to find the most recent planning attempt
+            foreach ($statusFile in $allStatusFiles) {
+                if ($statusFile.Name -match 'plan-(\d{8}-\d{6})\.status\.json') {
+                    $timestamp = $matches[1]
+                    if (-not $mostRecentTimestamp -or $timestamp -gt $mostRecentTimestamp) {
+                        $mostRecentTimestamp = $timestamp
+                        $mostRecentStatusPath = $statusFile.FullName
+                        $mostRecentPlanPath = $statusFile.FullName -replace '\.status\.json$', '.json'
+                    }
+                }
+            }
+            
+            if (-not $mostRecentStatusPath) {
+                $errorMessage = "No valid status files found in $plansDir. This indicates an incomplete planning process."
+                $script:Logger.LogError($errorMessage)
+                throw $errorMessage
+            }
+            
+            # Read and validate the status of the most recent planning attempt
+            try {
+                $mostRecentStatus = Get-Content -Path $mostRecentStatusPath -Raw | ConvertFrom-Json
+                if ($mostRecentStatus.status -ne "success") {
+                    $reason = if ($mostRecentStatus.reason) { " Reason: $($mostRecentStatus.reason)" } else { "" }
+                    $errorCount = if ($mostRecentStatus.errorCount) { " ($($mostRecentStatus.errorCount) errors)" } else { "" }
+                    $errorMessage = "Cannot apply: Most recent planning attempt failed with status '$($mostRecentStatus.status)'$reason$errorCount. Fix configuration issues and run Get-DLPaCPlan again."
+                    $script:Logger.LogError($errorMessage)
+                    throw $errorMessage
+                }
+                
+                # Verify that the corresponding plan file exists
+                if (-not (Test-Path $mostRecentPlanPath)) {
+                    $errorMessage = "Plan file not found: $mostRecentPlanPath. This indicates an incomplete planning process."
+                    $script:Logger.LogError($errorMessage)
+                    throw $errorMessage
+                }
+                
+                $PlanPath = $mostRecentPlanPath
+                $script:Logger.LogInfo("Most recent planning was successful - proceeding with apply")
+                $script:Logger.LogInfo("Using most recent plan file: $PlanPath")
+            }
+            catch {
+                if ($_.Exception.Message -like "*Cannot apply*" -or $_.Exception.Message -like "*Plan file not found*") {
+                    throw $_
+                }
+                $errorMessage = "Failed to read or parse most recent plan status file: $mostRecentStatusPath. Error: $_"
+                $script:Logger.LogError($errorMessage)
+                throw $errorMessage
+            }
         }
         
         # Validate plan file exists
@@ -116,8 +169,40 @@ function Invoke-DLPaCApply {
             throw $errorMessage
         }
         
-        # Initialize IPPSP adapter
-        $ippspAdapter = [DLPaCIPPSPAdapter]::new($script:Logger)
+        # Validate plan status
+        $statusPath = $PlanPath -replace '\.json$', '.status.json'
+        if (-not (Test-Path $statusPath)) {
+            $errorMessage = "Plan status file not found: $statusPath. This indicates the plan may be from an older version or incomplete planning process."
+            $script:Logger.LogError($errorMessage)
+            throw $errorMessage
+        }
+        
+        try {
+            $planStatus = Get-Content -Path $statusPath -Raw | ConvertFrom-Json
+            if ($planStatus.status -ne "success") {
+                $reason = if ($planStatus.reason) { " Reason: $($planStatus.reason)" } else { "" }
+                $errorMessage = "Cannot apply plan - last planning attempt failed with status: $($planStatus.status).$reason Run Get-DLPaCPlan again to generate a valid plan."
+                $script:Logger.LogError($errorMessage)
+                throw $errorMessage
+            }
+            $script:Logger.LogInfo("Plan status validated: $($planStatus.status) at $($planStatus.timestamp)")
+        }
+        catch {
+            if ($_.Exception.Message -like "*Cannot apply plan*") {
+                throw $_
+            }
+            $errorMessage = "Failed to read or parse plan status file: $statusPath. Error: $_"
+            $script:Logger.LogError($errorMessage)
+            throw $errorMessage
+        }
+        
+        # Initialize IPPSP adapter (reuse cached adapter when manual session active)
+        if ($script:IPPSPAdapter) {
+            $ippspAdapter = $script:IPPSPAdapter
+        }
+        else {
+            $ippspAdapter = [DLPaCIPPSPAdapter]::new($script:Logger)
+        }
     }
     
     process {
@@ -160,15 +245,7 @@ function Invoke-DLPaCApply {
                 }
             }
             
-            # Connect to Exchange Online
-            $script:Logger.LogInfo("Connecting to Exchange Online")
-            $connected = $ippspAdapter.Connect()
-            
-            if (-not $connected) {
-                $errorMessage = "Failed to connect to Exchange Online"
-                $script:Logger.LogError($errorMessage)
-                throw $errorMessage
-            }
+            # Connection already ensured earlier; skipping redundant connect
             
             # Load state
             $statePath = $script:StatePath
@@ -409,8 +486,8 @@ function Invoke-DLPaCApply {
                 $state.Unlock()
             }
             
-            # Disconnect from Exchange Online if connected
-            if ($ippspAdapter.IsConnected) {
+            # Disconnect from Exchange Online only when not in a manual session
+            if (-not $script:ManualSessionActive -and $ippspAdapter.IsConnected) {
                 $script:Logger.LogInfo("Disconnecting from Exchange Online")
                 $ippspAdapter.Disconnect()
             }

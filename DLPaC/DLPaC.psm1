@@ -17,6 +17,7 @@ $script:LogPath = $null
 $script:SchemaPath = Join-Path $PSScriptRoot 'Schemas'
 $script:IPPSPSession = $null
 $script:LogLevel = 'Information' # Default log level
+$script:ManualSessionActive = $false
 
 # Load module components
 Write-Verbose "Loading DLPaC Module v$script:ModuleVersion"
@@ -25,15 +26,16 @@ Write-Verbose "Loading DLPaC Module v$script:ModuleVersion"
 $ClassFiles = @(
     'BaseClass.ps1',
     'Logger.ps1',
-    'SchemaValidator.ps1',
     'Condition.ps1',
     'Action.ps1',
     'RuleAst.ps1',   # Phase 1 AST classes (must load after Condition/Action, before Rule)
     'Rule.ps1',
     'Policy.ps1',
-    'State.ps1',
     'Plan.ps1',
-    'IPPSPAdapter.ps1'
+    'State.ps1',
+    'SchemaValidator.ps1',
+    'IPPSPAdapter.ps1',
+    'CompatibilityValidator.ps1'  # Compatibility rules validator (must load after Policy/Rule/Plan)
 )
 
 foreach ($ClassFile in $ClassFiles) {
@@ -73,6 +75,8 @@ foreach ($Function in $PublicFunctions) {
     }
     catch {
         Write-Error "Failed to load public function $($Function.BaseName) : $_"
+        Write-Warning "Error details: $($_.Exception.Message)"
+        Write-Warning "Script Stack Trace: $($_.ScriptStackTrace)"
     }
 }
 

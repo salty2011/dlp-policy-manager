@@ -46,7 +46,9 @@
         'Invoke-DLPaCDestroy',
         'Test-DLPaCConfiguration',
         'Import-DLPaCExisting',
-        'Get-DLPaCClassifiers'
+        'Get-DLPaCClassifiers',
+        'Connect-DLPaC',
+        'Disconnect-DLPaC'
     )
     
     # Cmdlets to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no cmdlets to export.

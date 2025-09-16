@@ -1,37 +1,38 @@
 # Example DLP policy configuration for financial data protection
-Policies:
-  - Name: "Financial SuperData Protection"
-    Mode: "Enable"  # Enable, Test, or Disable
-    Priority: 0
-    Description: "Protects financial data from unauthorized sharing"
+policies:
+  - name: "Financial SuperData Protection"
+    mode: "Enable"  # Enable, Test, or Disable
+    priority: 0
+    description: "Protects financial data from unauthorized sharing"
     
-    # Policy scope
-    Scope:
-      Exchange: ["All"]
-    #  SharePoint: ["All"]
-    #  OneDrive: ["All"]
-    #  Teams: ["All"]
-    #  Devices: []
+    # Policy scope - use string identifiers (e.g. "All") not booleans
+    scope:
+      exchange: ["All"]
+      sharepoint: ["All"]
+      onedrive: ["All"]
+      teams: ["All"]
+      devices: ["All"]
       
     # Policy rules
-    Rules:
-    #  - Name: "Credit Card Rule"
-    #    Conditions:
-    #      - Type: "ContentContainsPattern"
-    #       Pattern: "CreditCardNumber"
-    #        MinCount: 1
-    #      - Type: "RecipientDomain"
-    #        Operator: "NotEquals"
-    #        Value: "contoso.com"
-    #    Actions:
-    #      - Type: "BlockAccess"
-    #        NotifyUser: true
-    #        NotifyAdmin: true
-      - Name: "Banking Information Rule"
-        Conditions:
-          - Type: "SensitiveInfoType"
-            InfoType: "Australia Bank Account Number"
-            MinCount: 1
-        Actions:
-          - Type: "Encrypt"
-            encryptionMethod: "Encrypt" # Using rmsTemplate instead of EncryptionMethod
+    rules:
+      # - name: "Credit Card Rule"
+      #   conditions:
+      #     - type: "ContentContainsPattern"
+      #       pattern: "CreditCardNumber"
+      #       minCount: 1
+      #     - type: "RecipientDomain"
+      #       operator: "NotEquals"
+      #       value: "contoso.com"
+      #   actions:
+      #     - type: "BlockAccess"
+      #       notifyUser: true
+      #       notifyAdmin: true
+      - name: "Banking Information Rule"
+        conditions:
+          - type: "SensitiveInfoType"
+            infoType: "Australia Bank Account Number"
+            minCount: 1
+        actions:
+          - type: "BlockAccess"
+            notifyUser: true
+            notifyAdmin: true

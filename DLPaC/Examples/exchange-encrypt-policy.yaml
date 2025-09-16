@@ -1,0 +1,21 @@
+# Exchange-only encryption example
+policies:
+  - name: "Exchange-Only-Encrypt"
+    mode: "Enable"
+    priority: 1
+    description: "Encrypts email in Exchange using an RMS template"
+    scope:
+      exchange: true
+      sharepoint: false
+      onedrive: false
+      teams: false
+      devices: false
+    rules:
+      - name: "Encrypt Exchange Mail"
+        conditions:
+          - type: "SensitiveInfoType"
+            infoType: "Australia Bank Account Number"
+            minCount: 1
+        actions:
+          - type: "Encrypt"
+            rmsTemplate: "Contoso Confidential"

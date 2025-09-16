@@ -71,6 +71,7 @@ function Test-DLPaCConfiguration {
     process {
         try {
             $results = [System.Collections.ArrayList]::new()
+            $allCompatibilityErrorMessages = @()
             
             # Determine files to validate
             $filesToValidate = @()
@@ -104,7 +105,21 @@ function Test-DLPaCConfiguration {
                 try {
                     # Parse YAML
                     $yamlContent = Get-Content -Path $file.FullName -Raw
+                    $script:Logger.LogInfo("Raw YAML content length: $($yamlContent.Length) characters")
+                    
                     $yamlObject = $yamlContent | ConvertFrom-Yaml
+                    
+                    # Log the original parsed YAML scope values
+                    if ($yamlObject.ContainsKey('policies') -and $yamlObject.policies -is [array] -and $yamlObject.policies.Count -gt 0) {
+                        $firstPolicy = $yamlObject.policies[0]
+                        if ($firstPolicy.ContainsKey('scope')) {
+                            $script:Logger.LogInfo("Original parsed YAML - First policy scope:")
+                            foreach ($scopeKey in $firstPolicy.scope.Keys) {
+                                $scopeValue = $firstPolicy.scope[$scopeKey]
+                                $script:Logger.LogInfo("  Original '$scopeKey': Type=$($scopeValue.GetType().FullName), Value=$($scopeValue | ConvertTo-Json -Compress)")
+                            }
+                        }
+                    }
                     
                     # Normalize the YAML object using the shared private function
                     $normalizedObject = Normalize-DLPaCKeys -InputObject $yamlObject
@@ -124,6 +139,30 @@ function Test-DLPaCConfiguration {
                     }
                     if ($normalizedObject.ContainsKey('policies')) {
                         $script:Logger.LogInfo("Normalized 'policies' type: $($normalizedObject.policies.GetType().FullName)")
+                        
+                        # Deep dive into scope values
+                        if ($normalizedObject.policies -is [array] -and $normalizedObject.policies.Count -gt 0) {
+                            $firstPolicy = $normalizedObject.policies[0]
+                            if ($firstPolicy.ContainsKey('scope')) {
+                                $script:Logger.LogInfo("First policy has 'scope' key")
+                                foreach ($scopeKey in @('exchange', 'sharepoint', 'onedrive', 'teams', 'devices')) {
+                                    if ($firstPolicy.scope.ContainsKey($scopeKey)) {
+                                        $scopeValue = $firstPolicy.scope[$scopeKey]
+                                        $script:Logger.LogInfo("Scope '$scopeKey' type: $($scopeValue.GetType().FullName)")
+                                        $script:Logger.LogInfo("Scope '$scopeKey' value: $($scopeValue | ConvertTo-Json -Compress)")
+                                        
+                                        # Check if it's an array and examine first element
+                                        if ($scopeValue -is [array] -and $scopeValue.Count -gt 0) {
+                                            $firstElement = $scopeValue[0]
+                                            $script:Logger.LogInfo("  First element type: $($firstElement.GetType().FullName)")
+                                            $script:Logger.LogInfo("  First element value: '$firstElement'")
+                                            $script:Logger.LogInfo("  First element is bool: $($firstElement -is [bool])")
+                                            $script:Logger.LogInfo("  First element is string: $($firstElement -is [string])")
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
                     
                     # Ensure policies is an array
@@ -168,6 +207,42 @@ function Test-DLPaCConfiguration {
                         $result.SchemaErrors += "Schema validation failed. See error details above."
                     }
                     
+                    # Run compatibility validation
+                    $workspaceRoot = if ($script:WorkspacePath) {
+                        $script:WorkspacePath
+                    } elseif (Test-Path $file.FullName -PathType Leaf) {
+                        Split-Path -Parent $file.FullName
+                    } else {
+                        $PWD.Path
+                    }
+                    $validator = [CompatibilityValidator]::new($script:Logger, $workspaceRoot)
+                    $null = $validator.LoadRules()
+                    $normalizedObject._sourcePath = $file.FullName
+                    $compatFindings = $validator.Evaluate($normalizedObject)
+
+                    # Process compatibility findings
+                    foreach ($finding in $compatFindings) {
+                        $severity = $finding.severity.ToLower()
+                        $locationInfo = ""
+                        if ($finding.locations -and $finding.locations.Count -gt 0) {
+                            $loc = $finding.locations[0]
+                            if ($loc.filePath) { $locationInfo = " at filePath=$($loc.filePath)" }
+                            if ($null -ne $loc.ruleIndex) { $locationInfo += ", ruleIndex=$($loc.ruleIndex)" }
+                        } else {
+                            $locationInfo = " at filePath=$($file.FullName)"
+                        }
+                        $formattedMessage = "[$severity] $($finding.ruleId) $($finding.policyName)/$($finding.ruleName): $($finding.message) — $($finding.suggestion)$locationInfo"
+                        if ($severity -eq "error") {
+                            # Avoid duplicate error logging; collect and emit once on aggregate throw
+                            $allCompatibilityErrorMessages += $formattedMessage
+                            $script:Logger.LogVerbose($formattedMessage)
+                        } elseif ($severity -eq "warn" -or $severity -eq "warning") {
+                            $script:Logger.LogWarning($formattedMessage)
+                        } else {
+                            $script:Logger.LogInfo($formattedMessage)
+                        }
+                    }
+
                     # Perform logical validation
                     $logicalErrors = @()
                     $warnings = @()
@@ -345,14 +420,20 @@ function Test-DLPaCConfiguration {
                 }
                 catch {
                     $result.Valid = $false
-                    $result.SchemaErrors += "Failed to parse YAML: $_"
+                    $errorMsg = "Failed to parse YAML: $_"
+                    $result.SchemaErrors += $errorMsg
                     $script:Logger.LogError("Failed to parse YAML in file $($file.FullName): $_")
                 }
                 
                 $results.Add($result) | Out-Null
             }
             
-            # Display results
+            # Abort on compatibility errors collected across files
+            if ($allCompatibilityErrorMessages -and $allCompatibilityErrorMessages.Count -gt 0) {
+                $joined = ($allCompatibilityErrorMessages -join [Environment]::NewLine)
+                throw ("Compatibility validation failed:" + [Environment]::NewLine + $joined)
+            }
+            # Display results summary
             foreach ($result in $results) {
                 if ($result.Valid) {
                     Write-Host "✓ $($result.File) - Valid" -ForegroundColor Green
@@ -369,15 +450,15 @@ function Test-DLPaCConfiguration {
                     
                     if ($result.SchemaErrors.Count -gt 0) {
                         Write-Host "  Schema Errors:" -ForegroundColor Red
-                        foreach ($error in $result.SchemaErrors) {
-                            Write-Host "  - $error" -ForegroundColor Red
+                        foreach ($schemaError in $result.SchemaErrors) {
+                            Write-Host "  - $schemaError" -ForegroundColor Red
                         }
                     }
                     
                     if ($result.LogicalErrors.Count -gt 0) {
                         Write-Host "  Logical Errors:" -ForegroundColor Red
-                        foreach ($error in $result.LogicalErrors) {
-                            Write-Host "  - $error" -ForegroundColor Red
+                        foreach ($logicalError in $result.LogicalErrors) {
+                            Write-Host "  - $logicalError" -ForegroundColor Red
                         }
                     }
                     
@@ -402,8 +483,15 @@ function Test-DLPaCConfiguration {
             }
         }
         catch {
-            $script:Logger.LogError("Error validating configuration: $_")
-            throw $_
+            $msg = $_.Exception.Message
+            # Avoid duplicate logging for compatibility aggregation errors; just rethrow
+            if ($null -ne $msg -and $msg -like 'Compatibility validation failed:*') {
+                throw $_
+            }
+            else {
+                $script:Logger.LogError("Error validating configuration: $_")
+                throw $_
+            }
         }
     }
 }

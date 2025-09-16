@@ -131,10 +131,12 @@ class DLPaCPolicy : DLPaCBaseObject {
             devices    = 'EndpointDlpLocation'
         }
         foreach ($scopeKey in $scopeParamMap.Keys) {
+            # Set-DlpCompliancePolicy does not expose 'EndpointDlpLocation'; skip devices on update
+            if ($ForUpdate -and $scopeKey -eq 'devices') { continue }
             $values = $this.Scope[$scopeKey]
             if ($null -ne $values -and $values.Count -gt 0) {
                 $baseParam = $scopeParamMap[$scopeKey]
-                $paramName = if ($ForUpdate -and $scopeKey -ne 'devices') { "Add$baseParam" } else { $baseParam }
+                $paramName = if ($ForUpdate) { "Add$baseParam" } else { $baseParam }
                 $params[$paramName] = $values
             }
         }

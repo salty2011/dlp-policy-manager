@@ -113,6 +113,49 @@ function Initialize-DLPaCWorkspace {
             # Enable file logging
             $script:Logger.EnableFileLogging($logPath)
             
+            # Scaffold compatibility overrides file (idempotent)
+            $overridesPath = Join-Path $Path ".dlpac\compatibility-overrides.yaml"
+            if (Test-Path $overridesPath) {
+                $script:Logger.LogVerbose("Compatibility overrides already present at $overridesPath; skipping")
+            }
+            else {
+                $script:Logger.LogInfo("Scaffolded compatibility overrides at $overridesPath")
+                $compatOverridesTemplate = @"
+# DLPaC Compatibility Overrides
+# These rules are merged over module defaults by id (case-insensitive).
+# - Overrides can disable a default rule via `enabled: false`
+# - Overrides can change severity/message/suggestion/description/match
+# - New org-specific rules can be added here
+# Defaults are in: DLPaC/Rules/compatibility-rules.yaml
+rules:
+  # Example: disable or downgrade the baseline SPO/OD Encrypt rule
+  # - id: encrypt_sharepoint_onedrive_unsupported
+  #   enabled: false
+  #   # or change severity instead of disabling:
+  #   # severity: warn
+  #   # message: "Org-specific exception for SPO/OD encryption."
+  #   # suggestion: "Limit to Exchange in production."
+  #
+  # Example: add a custom org rule (replace placeholder values)
+  # - id: example_custom_rule
+  #   description: "Example org-specific compatibility rule"
+  #   severity: warn
+  #   match:
+  #     actions_any_of: [ExampleAction]
+  #     scopes_any_of: [Devices]
+  #   message: "Example warning triggered for Devices + ExampleAction."
+  #   suggestion: "Adjust action or scope to comply with org standards."
+  #   enabled: true
+"@
+                try {
+                    $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+                    [System.IO.File]::WriteAllText($overridesPath, $compatOverridesTemplate, $utf8NoBom)
+                }
+                catch {
+                    # Fallback to UTF8 with BOM if UTF8 without BOM is not available
+                    $compatOverridesTemplate | Out-File -FilePath $overridesPath -Encoding utf8 -Force
+                }
+            }
             # Fetch and cache classifiers
             $classifiersPath = Join-Path $Path ".dlpac\state\classifiers.json"
             try {

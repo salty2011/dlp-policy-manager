@@ -62,9 +62,11 @@ function Normalize-DLPaCKeys {
         
         # Ensure all expected scope keys are present as arrays
         if ($normalizedObject.ContainsKey("scope")) {
+            Write-Verbose "Processing scope normalization..."
             $expectedScopes = @("exchange","sharepoint","onedrive","teams","devices")
             foreach ($scopeKey in $expectedScopes) {
                 if (-not $normalizedObject["scope"].ContainsKey($scopeKey)) {
+                    Write-Verbose "  Scope '$scopeKey' not found, setting to empty array"
                     $normalizedObject["scope"][$scopeKey] = @()
                 } elseif ($null -eq $normalizedObject["scope"][$scopeKey]) {
                     Write-Warning "Scope '$scopeKey' is set to null and will be ignored. Use an empty array '[]' to explicitly disable."
@@ -72,9 +74,16 @@ function Normalize-DLPaCKeys {
                 } else {
                     # Convert scope values to array if they aren't already
                     $currentValue = $normalizedObject["scope"][$scopeKey]
+                    Write-Verbose "  Scope '$scopeKey' before conversion: Type=$($currentValue.GetType().FullName), Value=$($currentValue | ConvertTo-Json -Compress)"
+                    
                     if ($currentValue -isnot [array]) {
+                        Write-Verbose "  Converting '$scopeKey' to array"
                         $normalizedObject["scope"][$scopeKey] = @($currentValue)
                     }
+                    
+                    # Log after conversion
+                    $newValue = $normalizedObject["scope"][$scopeKey]
+                    Write-Verbose "  Scope '$scopeKey' after conversion: Type=$($newValue.GetType().FullName), Value=$($newValue | ConvertTo-Json -Compress)"
                 }
             }
         }

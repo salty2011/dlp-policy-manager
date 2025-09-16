@@ -20,9 +20,40 @@ class DLPaCIPPSPAdapter {
     }
     
     [bool] Connect([string]$TenantId, [System.Management.Automation.PSCredential]$Credential) {
-        try {
-            $this.Logger.LogInfo("Connecting to Exchange Online...")
-            
+            try {
+                # Idempotent early return when already connected (and session still valid)
+                if ($this.IsConnected) {
+                    try {
+                        $conn = Get-ConnectionInformation -ErrorAction Stop
+                        if ($conn -and $conn.State -eq 'Connected') {
+                            $this.Logger.LogInfo("Already connected to Exchange Online")
+                            # Ensure IPPS DLP cmdlets are available
+                            try {
+                                if (-not (Get-Command Get-DlpCompliancePolicy -ErrorAction SilentlyContinue)) {
+                                    $this.Logger.LogInfo("Connecting to Security & Compliance (IPPS) to load DLP cmdlets...")
+                                    $ippsParams = @{}
+                                    if ($this.TenantId) { $ippsParams.Organization = $this.TenantId }
+                                    Connect-IPPSSession @ippsParams -ErrorAction Stop
+                                }
+                                if (-not (Get-Command Get-DlpCompliancePolicy -ErrorAction SilentlyContinue)) {
+                                    $this.Logger.LogWarning("IPPS connected but DLP cmdlets not found. Some operations may fail.")
+                                } else {
+                                    $this.Logger.LogInfo("Security & Compliance DLP cmdlets available")
+                                }
+                            } catch {
+                                $this.Logger.LogWarning("Failed to establish IPPS session for DLP cmdlets: $_")
+                            }
+                            return $true
+                        } else {
+                            throw "Not connected"
+                        }
+                    }
+                    catch {
+                        $this.Logger.LogWarning("IsConnected cache was true but no active EXO connection found; reconnecting")
+                        $this.IsConnected = $false
+                    }
+                }
+                
             $connectParams = @{
                 ErrorAction = "Stop"
             }
@@ -40,23 +71,83 @@ class DLPaCIPPSPAdapter {
                 $this.ConnectionMethod = "Interactive"
             }
             
-            # Check if already connected
+            # Check if already connected (avoid reconnect and banner)
             try {
-                $null = Get-IPPSSession -ErrorAction Stop
-                $this.Logger.LogInfo("Already connected to Exchange Online")
-                $this.IsConnected = $true
-                return $true
+                $conn = Get-ConnectionInformation -ErrorAction Stop
+                if ($conn -and $conn.State -eq 'Connected') {
+                    $this.Logger.LogInfo("Already connected to Exchange Online")
+                    # Ensure IPPS DLP cmdlets are available
+                    try {
+                        if (-not (Get-Command Get-DlpCompliancePolicy -ErrorAction SilentlyContinue)) {
+                            $this.Logger.LogInfo("Connecting to Security & Compliance (IPPS) to load DLP cmdlets...")
+                            $ippsParams = @{}
+                            if ($this.TenantId) { $ippsParams.Organization = $this.TenantId }
+                            Connect-IPPSSession @ippsParams -ErrorAction Stop
+                        }
+                        if (-not (Get-Command Get-DlpCompliancePolicy -ErrorAction SilentlyContinue)) {
+                            $this.Logger.LogWarning("IPPS connected but DLP cmdlets not found. Some operations may fail.")
+                        } else {
+                            $this.Logger.LogInfo("Security & Compliance DLP cmdlets available")
+                        }
+                    } catch {
+                        $this.Logger.LogWarning("Failed to establish IPPS session for DLP cmdlets: $_")
+                    }
+                    $this.IsConnected = $true
+                    return $true
+                }
             }
             catch {
                 # Not connected, continue with connection
             }
             
             # Connect to Exchange Online
-            Connect-IPPSSession @connectParams
+            $this.Logger.LogInfo("Connecting to Exchange Online...")
+            # Safely render connect params without escaping issues
+            $paramPairs = @($connectParams.GetEnumerator() | ForEach-Object { '{0}:{1}' -f $_.Key, ($_.Value -as [string]) })
+            $this.Logger.LogVerbose("Connect parameters: $($paramPairs -join ', ')")
             
-            $this.Logger.LogInfo("Successfully connected to Exchange Online")
-            $this.IsConnected = $true
-            return $true
+            Connect-ExchangeOnline @connectParams
+            
+            # Verify IPPS session created
+            try {
+                $conn = Get-ConnectionInformation -ErrorAction Stop
+                if ($null -eq $conn -or $conn.State -ne 'Connected') {
+                    $this.Logger.LogError("Connect completed but no active EXO connection detected via Get-ConnectionInformation.")
+                    $this.IsConnected = $false
+                    return $false
+                } else {
+                    # Log basic connection details for diagnostics
+                    try {
+                        $this.Logger.LogVerbose(("ConnectionInfo: " + ($conn | ConvertTo-Json -Compress)))
+                    } catch {
+                        $this.Logger.LogVerbose("Unable to serialize connection information for verbose logging: $_")
+                    }
+                    $this.Logger.LogInfo("Successfully connected to Exchange Online")
+                    # Ensure IPPS DLP cmdlets are available (for Get-DlpCompliancePolicy, Get-DlpSensitiveInformationType, etc.)
+                    try {
+                        if (-not (Get-Command Get-DlpCompliancePolicy -ErrorAction SilentlyContinue)) {
+                            $this.Logger.LogInfo("Connecting to Security & Compliance (IPPS) to load DLP cmdlets...")
+                            $ippsParams = @{}
+                            if ($this.TenantId) { $ippsParams.Organization = $this.TenantId }
+                            Connect-IPPSSession @ippsParams -ErrorAction Stop
+                        }
+                        if (-not (Get-Command Get-DlpCompliancePolicy -ErrorAction SilentlyContinue)) {
+                            $this.Logger.LogWarning("IPPS connected but DLP cmdlets not found. Some operations may fail.")
+                        } else {
+                            $this.Logger.LogInfo("Security & Compliance DLP cmdlets available")
+                        }
+                    } catch {
+                        $this.Logger.LogWarning("Failed to establish IPPS session for DLP cmdlets: $_")
+                    }
+                    $this.IsConnected = $true
+                    return $true
+                }
+            }
+            catch {
+                $this.Logger.LogError("Connect attempt completed but verification failed: $_")
+                $this.IsConnected = $false
+                return $false
+            }
         }
         catch {
             $this.Logger.LogError("Failed to connect to Exchange Online: $_")
@@ -67,11 +158,25 @@ class DLPaCIPPSPAdapter {
     
     [void] Disconnect() {
         try {
-            if ($this.IsConnected) {
+            # Determine if a session actually exists regardless of this instance flag
+            $sessionExists = $false
+            try {
+                $conn = Get-ConnectionInformation -ErrorAction Stop
+                if ($conn -and $conn.State -eq 'Connected') { $sessionExists = $true }
+            }
+            catch {
+                $sessionExists = $false
+            }
+
+            if ($this.IsConnected -or $sessionExists) {
                 $this.Logger.LogInfo("Disconnecting from Exchange Online...")
                 Disconnect-ExchangeOnline -Confirm:$false -ErrorAction SilentlyContinue
                 $this.IsConnected = $false
                 $this.Logger.LogInfo("Disconnected from Exchange Online")
+            }
+            else {
+                $this.Logger.LogInfo("No active Exchange Online session to disconnect")
+                $this.IsConnected = $false
             }
         }
         catch {
@@ -592,6 +697,21 @@ class DLPaCIPPSPAdapter {
             $connected = $this.Connect()
             if (-not $connected) {
                 throw "Not connected to Exchange Online. Please connect first using Connect-DLPaC."
+            }
+        }
+        # Ensure Security & Compliance (IPPS) DLP cmdlets are available even if EXO is connected
+        if (-not (Get-Command Get-DlpCompliancePolicy -ErrorAction SilentlyContinue)) {
+            try {
+                $this.Logger.LogInfo("Ensuring Security & Compliance (IPPS) DLP cmdlets are available...")
+                $ippsParams = @{}
+                if ($this.TenantId) { $ippsParams.Organization = $this.TenantId }
+                Connect-IPPSSession @ippsParams -ErrorAction Stop
+            }
+            catch {
+                $this.Logger.LogWarning("Failed to establish IPPS session for DLP cmdlets: $_")
+            }
+            if (-not (Get-Command Get-DlpCompliancePolicy -ErrorAction SilentlyContinue)) {
+                throw "DLP cmdlets not available (Get-DlpCompliancePolicy). Verify IPPS permissions and module version."
             }
         }
     }

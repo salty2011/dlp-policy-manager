@@ -72,8 +72,13 @@ function Import-DLPaCExisting {
             New-Item -Path $OutputPath -ItemType Directory -Force | Out-Null
         }
         
-        # Initialize IPPSP adapter
-        $ippspAdapter = [DLPaCIPPSPAdapter]::new($script:Logger)
+        # Initialize IPPSP adapter (reuse cached adapter when manual session active)
+        if ($script:IPPSPAdapter) {
+            $ippspAdapter = $script:IPPSPAdapter
+        }
+        else {
+            $ippspAdapter = [DLPaCIPPSPAdapter]::new($script:Logger)
+        }
     }
     
     process {
@@ -276,8 +281,8 @@ function Import-DLPaCExisting {
                 $state.Unlock()
             }
             
-            # Disconnect from Exchange Online if connected
-            if ($ippspAdapter.IsConnected) {
+            # Disconnect from Exchange Online only when not in a manual session
+            if (-not $script:ManualSessionActive -and $ippspAdapter.IsConnected) {
                 $script:Logger.LogInfo("Disconnecting from Exchange Online")
                 $ippspAdapter.Disconnect()
             }
