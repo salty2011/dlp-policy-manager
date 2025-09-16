@@ -14,3 +14,176 @@ rules:
     message: Encrypt with RMS template isn't supported for SharePoint/OneDrive.
     suggestion: Remove Encrypt action for these scopes or limit scope to Exchange.
     enabled: true
+
+  - id: encrypt_teams_unsupported
+    description: Encrypt RMS template unsupported on Teams
+    severity: error
+    match:
+      actions_any_of:
+        - EncryptRMSTemplate
+      scopes_any_of:
+        - Teams
+    message: Encrypt with RMS template isn't supported for Teams.
+    suggestion: Remove Encrypt action for Teams or limit scope to Exchange.
+    enabled: true
+
+  - id: encrypt_devices_unsupported
+    description: Encrypt RMS template unsupported on Devices
+    severity: error
+    match:
+      actions_any_of:
+        - EncryptRMSTemplate
+      scopes_any_of:
+        - Devices
+    message: Encrypt with RMS template isn't supported for Endpoint (Devices).
+    suggestion: Use Endpoint DLP block/warn actions instead, or restrict Encrypt to Exchange.
+    enabled: true
+
+  - id: blockaccess_exchange_unsupported
+    description: BlockAccess action unsupported on Exchange
+    severity: error
+    match:
+      actions_any_of:
+        - BlockAccess
+      scopes_any_of:
+        - Exchange
+    message: BlockAccess is not supported for Exchange scope.
+    suggestion: Replace with an Exchange-capable action (e.g., reject/quarantine) or split policies by workload.
+    enabled: true
+
+  - id: recipient_domain_not_supported_on_sharepoint
+    description: RecipientDomain condition unsupported on SharePoint
+    severity: error
+    match:
+      conditions_any_of:
+        - RecipientDomain
+      scopes_any_of:
+        - SharePoint
+    message: RecipientDomain condition is only valid for Exchange.
+    suggestion: Remove RecipientDomain or limit scope to Exchange for mail flow conditions.
+    enabled: true
+
+  - id: recipient_domain_not_supported_on_onedrive
+    description: RecipientDomain condition unsupported on OneDrive
+    severity: error
+    match:
+      conditions_any_of:
+        - RecipientDomain
+      scopes_any_of:
+        - OneDrive
+    message: RecipientDomain condition is only valid for Exchange.
+    suggestion: Remove RecipientDomain or limit scope to Exchange for mail flow conditions.
+    enabled: true
+
+  - id: recipient_domain_not_supported_on_teams
+    description: RecipientDomain condition unsupported on Teams
+    severity: error
+    match:
+      conditions_any_of:
+        - RecipientDomain
+      scopes_any_of:
+        - Teams
+    message: RecipientDomain condition is only valid for Exchange.
+    suggestion: Remove RecipientDomain or limit scope to Exchange for mail flow conditions.
+    enabled: true
+
+  - id: recipient_domain_not_supported_on_devices
+    description: RecipientDomain condition unsupported on Devices
+    severity: error
+    match:
+      conditions_any_of:
+        - RecipientDomain
+      scopes_any_of:
+        - Devices
+    message: RecipientDomain condition is only valid for Exchange.
+    suggestion: Remove RecipientDomain or limit scope to Exchange for mail flow conditions.
+    enabled: true
+
+  - id: encrypt_mixed_scopes_warning
+    description: Encrypt with RMS template present alongside Exchange and other workloads
+    severity: warning
+    match:
+      actions_any_of:
+        - EncryptRMSTemplate
+      scopes_all_of:
+        - Exchange
+      scopes_any_of:
+        - SharePoint
+        - OneDrive
+        - Teams
+        - Devices
+    message: Encrypt action is configured with mixed workloads; only Exchange supports RMS template encryption.
+    suggestion: Split the policy/rule by workload and keep Encrypt to Exchange-only.
+    enabled: true
+
+  - id: blockaccess_teams_unsupported
+    description: BlockAccess action unsupported on Teams
+    severity: error
+    match:
+      actions_any_of:
+        - BlockAccess
+      scopes_any_of:
+        - Teams
+    message: BlockAccess is not supported for Teams scope.
+    suggestion: Use Teams-compatible controls or split the policy by workload.
+    enabled: true
+
+  - id: blockaccess_devices_unsupported
+    description: BlockAccess action unsupported on Devices
+    severity: error
+    match:
+      actions_any_of:
+        - BlockAccess
+      scopes_any_of:
+        - Devices
+    message: BlockAccess is not supported for Endpoint (Devices).
+    suggestion: Use Endpoint DLP activity controls (e.g., warn/block) or remove BlockAccess for Devices.
+    enabled: true
+
+  - id: access_scope_not_supported_on_sharepoint
+    description: AccessScope condition unsupported on SharePoint
+    severity: error
+    match:
+      conditions_any_of:
+        - AccessScope
+      scopes_any_of:
+        - SharePoint
+    message: AccessScope condition is only valid for Exchange.
+    suggestion: Remove AccessScope or limit scope to Exchange for mail flow conditions.
+    enabled: true
+
+  - id: access_scope_not_supported_on_onedrive
+    description: AccessScope condition unsupported on OneDrive
+    severity: error
+    match:
+      conditions_any_of:
+        - AccessScope
+      scopes_any_of:
+        - OneDrive
+    message: AccessScope condition is only valid for Exchange.
+    suggestion: Remove AccessScope or limit scope to Exchange for mail flow conditions.
+    enabled: true
+
+  - id: access_scope_not_supported_on_teams
+    description: AccessScope condition unsupported on Teams
+    severity: error
+    match:
+      conditions_any_of:
+        - AccessScope
+      scopes_any_of:
+        - Teams
+    message: AccessScope condition is only valid for Exchange.
+    suggestion: Remove AccessScope or limit scope to Exchange for mail flow conditions.
+    enabled: true
+
+  - id: access_scope_not_supported_on_devices
+    description: AccessScope condition unsupported on Devices
+    severity: error
+    match:
+      conditions_any_of:
+        - AccessScope
+      scopes_any_of:
+        - Devices
+    message: AccessScope condition is only valid for Exchange.
+    suggestion: Remove AccessScope or limit scope to Exchange for mail flow conditions.
+    enabled: true
