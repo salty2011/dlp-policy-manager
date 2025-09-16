@@ -56,8 +56,13 @@ function Invoke-DLPaCDestroy {
             throw $errorMessage
         }
         
-        # Initialize IPPSP adapter
-        $ippspAdapter = [DLPaCIPPSPAdapter]::new($script:Logger)
+        # Initialize IPPSP adapter (reuse cached adapter when manual session active)
+        if ($script:IPPSPAdapter) {
+            $ippspAdapter = $script:IPPSPAdapter
+        }
+        else {
+            $ippspAdapter = [DLPaCIPPSPAdapter]::new($script:Logger)
+        }
     }
     
     process {

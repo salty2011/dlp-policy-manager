@@ -1,0 +1,16 @@
+# Default compatibility rules for DLPaC module
+# These rules check for incompatible configurations between actions, conditions, and scopes
+
+rules:
+  - id: encrypt_sharepoint_onedrive_unsupported
+    description: Encrypt RMS template unsupported on SPO/OD
+    severity: error
+    match:
+      actions_any_of:
+        - EncryptRMSTemplate
+      scopes_any_of:
+        - SharePoint
+        - OneDrive
+    message: Encrypt with RMS template isn't supported for SharePoint/OneDrive.
+    suggestion: Remove Encrypt action for these scopes or limit scope to Exchange.
+    enabled: true

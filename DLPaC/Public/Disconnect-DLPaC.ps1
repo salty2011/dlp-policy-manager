@@ -24,12 +24,22 @@ function Disconnect-DLPaC {
         $script:Logger.LogInfo("Manual session not active; nothing to disconnect")
         return
     }
-
-    $adapter = [DLPaCIPPSPAdapter]::new($script:Logger)
+ 
+    # Prefer cached adapter when available
+    if ($script:IPPSPAdapter) {
+        $adapter = $script:IPPSPAdapter
+    }
+    else {
+        $adapter = [DLPaCIPPSPAdapter]::new($script:Logger)
+    }
+ 
     if ($adapter.IsConnected) {
+        $script:Logger.LogInfo("Disconnecting from Exchange Online (manual disconnect)")
         $adapter.Disconnect()
     }
-
+ 
+    # Clear cached adapter and manual session flag
+    $script:IPPSPAdapter = $null
     $script:ManualSessionActive = $false
     $script:Logger.LogInfo("Manual session deactivated")
 }

@@ -38,5 +38,25 @@ function Connect-DLPaC {
         }
     }
 
+    # Ensure IPPS (Security & Compliance) DLP cmdlets are available for this manual session
+    try {
+        if (-not (Get-Command Get-DlpCompliancePolicy -ErrorAction SilentlyContinue)) {
+            $script:Logger.LogInfo("Connecting to Security & Compliance (IPPS) to enable DLP cmdlets...")
+            $ippsParams = @{}
+            if ($adapter.TenantId) { $ippsParams.Organization = $adapter.TenantId }
+            Connect-IPPSSession @ippsParams -ErrorAction Stop
+        }
+        if (-not (Get-Command Get-DlpCompliancePolicy -ErrorAction SilentlyContinue)) {
+            $script:Logger.LogWarning("IPPS connected but DLP cmdlets not found; DLP operations may fail.")
+        } else {
+            $script:Logger.LogInfo("Security & Compliance DLP cmdlets available")
+        }
+    } catch {
+        $script:Logger.LogWarning("Failed to establish IPPS session for DLP cmdlets: $_")
+    }
+
+    # Cache the adapter for reuse by other cmdlets during a manual session
+    $script:IPPSPAdapter = $adapter
+
     $script:Logger.LogInfo("Manual session activated")
 }

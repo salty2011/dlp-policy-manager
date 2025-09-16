@@ -100,8 +100,13 @@ function Get-DLPaCPlan {
             New-Item -Path $plansDir -ItemType Directory -Force | Out-Null
         }
         
-        # Initialize IPPSP adapter
-        $ippspAdapter = [DLPaCIPPSPAdapter]::new($script:Logger)
+        # Initialize IPPSP adapter (reuse cached adapter when manual session active)
+        if ($script:IPPSPAdapter) {
+            $ippspAdapter = $script:IPPSPAdapter
+        }
+        else {
+            $ippspAdapter = [DLPaCIPPSPAdapter]::new($script:Logger)
+        }
     }
     
     process {
@@ -228,6 +233,84 @@ function Get-DLPaCPlan {
             
             $script:Logger.LogInfo("Parsed $($policies.Count) policies from configuration files")
             
+            # Run compatibility validation BEFORE planning begins
+            $script:Logger.LogInfo("Running compatibility validation")
+            
+            # Determine workspace root
+            $workspaceRoot = if ($script:WorkspacePath) {
+                $script:WorkspacePath
+            } elseif (Test-Path $Path -PathType Container) {
+                $Path
+            } else {
+                Split-Path -Parent $Path
+            }
+            
+            # Create validator and load rules
+            $validator = [CompatibilityValidator]::new($script:Logger, $workspaceRoot)
+            $null = $validator.LoadRules()
+            
+            # Evaluate compatibility using the policies array
+            $findings = $validator.Evaluate($policies)
+            
+            # Process findings and abort if there are errors
+            $errorCount = 0
+            $warnCount = 0
+            
+            foreach ($finding in $findings) {
+                $severity = $finding.severity.ToLower()
+                
+                # Format the message
+                $locationInfo = ""
+                if ($finding.locations -and $finding.locations.Count -gt 0) {
+                    $loc = $finding.locations[0]
+                    if ($loc.filePath) {
+                        $locationInfo = " at filePath=$($loc.filePath)"
+                    }
+                    if ($null -ne $loc.ruleIndex) {
+                        $locationInfo += ", ruleIndex=$($loc.ruleIndex)"
+                    }
+                }
+                
+                $formattedMessage = "[$severity] $($finding.ruleId) $($finding.policyName)/$($finding.ruleName): $($finding.message) — $($finding.suggestion)$locationInfo"
+                
+                if ($severity -eq "error") {
+                    $script:Logger.LogError($formattedMessage)
+                    $errorCount++
+                } elseif ($severity -eq "warn" -or $severity -eq "warning") {
+                    $script:Logger.LogWarning($formattedMessage)
+                    $warnCount++
+                } else {
+                    $script:Logger.LogInfo($formattedMessage)
+                }
+            }
+            
+            # Abort if there are errors (before planning begins)
+            if ($errorCount -gt 0) {
+                # Collect detailed error messages for the exception
+                $errorMessages = @()
+                foreach ($finding in $findings) {
+                    if ($finding.severity.ToLower() -eq "error") {
+                        $errorMessages += "$($finding.ruleId): $($finding.message)"
+                    }
+                }
+                $detailedErrors = $errorMessages -join "; "
+                
+                # Write planning status (failed)
+                $statusPath = $OutputPath -replace '\.json$', '.status.json'
+                $planStatus = @{
+                    timestamp = Get-Date -Format "yyyy-MM-ddTHH:mm:ssZ"
+                    status = "failed"
+                    reason = "compatibility_errors"
+                    errorCount = $errorCount
+                    errors = $errorMessages
+                    configPath = $Path
+                }
+                $planStatus | ConvertTo-Json -Depth 5 | Set-Content -Path $statusPath -Encoding UTF8
+                $script:Logger.LogInfo("Planning status (failed) written to $statusPath")
+                
+                throw "Planning aborted: $errorCount compatibility error(s) found. $detailedErrors Fix the errors and try again."
+            }
+            
             # Get current policies from tenant
             $currentPolicies = [System.Collections.ArrayList]::new()
             
@@ -338,9 +421,25 @@ function Get-DLPaCPlan {
                 }
             }
             
+            # Assign findings to plan (compatibility validation was done earlier)
+            $plan.CompatibilityFindings = $findings
+            
             # Save plan
             $script:Logger.LogInfo("Saving plan to $OutputPath")
             $plan.Save()
+            
+            # Write planning status (success)
+            $statusPath = $OutputPath -replace '\.json$', '.status.json'
+            $planStatus = @{
+                timestamp = Get-Date -Format "yyyy-MM-ddTHH:mm:ssZ"
+                status = "success"
+                planPath = $OutputPath
+                configPath = $Path
+                changeCount = $plan.GetChangeCount()
+                hasChanges = $plan.HasChanges()
+            }
+            $planStatus | ConvertTo-Json -Depth 5 | Set-Content -Path $statusPath -Encoding UTF8
+            $script:Logger.LogInfo("Planning status (success) written to $statusPath")
             
             # Display plan summary
             $summary = $plan.GenerateSummary()

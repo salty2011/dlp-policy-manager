@@ -13,18 +13,31 @@ function Get-DLPaCClassifiers {
     if (-not $script:Logger) {
         $script:Logger = [DLPaCLogger]::new()
     }
-    $ippspAdapter = [DLPaCIPPSPAdapter]::new($script:Logger)
+    # Reuse cached adapter created by Connect-DLPaC when available to avoid creating a fresh adapter
+    if ($script:IPPSPAdapter) {
+        $ippspAdapter = $script:IPPSPAdapter
+    }
+    else {
+        $ippspAdapter = [DLPaCIPPSPAdapter]::new($script:Logger)
+    }
 
     try {
         # Prefer existing session when manual session is active to avoid extra prompts
         $connected = $false
         if ($script:ManualSessionActive) {
-            try {
-                $null = Get-IPPSSession -ErrorAction Stop
+            # If the cached adapter already reports connected, trust it and avoid calling Get-IPPSSession
+            if ($ippspAdapter.IsConnected) {
                 $connected = $true
-                $script:Logger.LogInfo("Using existing Exchange Online session (manual session active)")
-            } catch {
-                $connected = $false
+                $script:Logger.LogInfo("Using cached IPPSP adapter connection (manual session active)")
+            }
+            else {
+                try {
+                    $null = Get-IPPSSession -ErrorAction Stop
+                    $connected = $true
+                    $script:Logger.LogInfo("Using existing Exchange Online session (manual session active)")
+                } catch {
+                    $connected = $false
+                }
             }
         }
         if (-not $connected) {

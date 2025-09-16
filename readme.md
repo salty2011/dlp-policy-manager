@@ -427,3 +427,52 @@ Disconnect-DLPaC
 Notes:
 - Standalone cmdlets still auto-connect, and will auto-disconnect unless a manual session is active.
 - Connect/Disconnect are idempotent; calling them multiple times is safe.
+
+## Compatibility checks
+
+Pre-deployment detection of unsupported action/condition/scope combinations. Runs automatically during planning via [PowerShell.Get-DLPaCPlan()](DLPaC/Public/Get-DLPaCPlan.ps1:1) and during configuration validation via [PowerShell.Test-DLPaCConfiguration()](DLPaC/Public/Test-DLPaCConfiguration.ps1:1). Findings with severity "error" abort; "warn" logs and proceeds.
+
+### Quick start
+
+- Initialize workspace (scaffolds overrides file):
+```powershell
+[PowerShell]
+Initialize-DLPaCWorkspace -Path "./dlp-workspace"
+```
+
+- Edit overrides:
+  - File: [.dlpac/compatibility-overrides.yaml](.dlpac/compatibility-overrides.yaml:1)
+
+- Run validation and plan (offline-friendly):
+```powershell
+[PowerShell]
+# Validate configs (schema + compatibility); fails on "error"
+Test-DLPaCConfiguration -Path "./dlp-workspace/configs" -Detailed
+
+# Plan without connecting; aborts on "error", persists "warn"
+Get-DLPaCPlan -ConfigPath "./dlp-workspace/configs" -NoConnect -Detailed
+```
+
+### Behavior and results
+
+- Abort-on-error: Planning and config validation stop on "error" findings.
+- Findings on plan: Saved under [PowerShell.DLPaCPlan.CompatibilityFindings](DLPaC/Classes/Plan.ps1:1) in the generated plan saved to `.dlpac/plans`.
+
+### Examples and references
+
+- Baseline rules (module defaults): [DLPaC/Rules/compatibility-rules.yaml](DLPaC/Rules/compatibility-rules.yaml:1)
+- Demo config with an incompatible Encrypt on SPO/OneDrive: [Test/configs/incompatible-encrypt-spo-od.yaml](Test/configs/incompatible-encrypt-spo-od.yaml:1)
+
+Minimal override examples:
+```yaml
+[yaml]
+# Disable a default rule by id (case-insensitive)
+- id: "encrypt-spo-od-unsupported"
+  enabled: false
+
+# Downgrade severity to warn
+- id: "encrypt-spo-od-unsupported"
+  severity: "warn"
+```
+
+See the detailed design for schema, precedence, and integrations: [docs/DLPaC-Enhanced-Schema-Design.md](docs/DLPaC-Enhanced-Schema-Design.md:1)

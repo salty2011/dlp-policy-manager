@@ -1,0 +1,19 @@
+# Incompatible configuration for testing Encrypt with RMS template on SPO/OD
+policies:
+  - name: "Compat-Incompatible-Encrypt-SPO-OD"
+    mode: "Enable"
+    priority: 10
+    description: "Deliberately incompatible: Encrypt RMSTemplate with SharePoint/OneDrive scopes"
+    scope:
+      exchange: ["All"]
+      sharepoint: ["All"]
+      onedrive: ["All"]
+    rules:
+      - name: "Encrypt SPO/OD"
+        conditions:
+          - type: "ContentContainsPattern"
+            pattern: "Any"
+            minCount: 1
+        actions:
+          - type: "Encrypt"
+            rmsTemplate: "Contoso Confidential"

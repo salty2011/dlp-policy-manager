@@ -40,8 +40,9 @@ policies:
             minCount: 1
             
         actions:
-          - type: "Encrypt"
-            encryptionMethod: "Office365Message"
+          - type: "BlockAccess"
+            notifyUser: true
+            notifyAdmin: true
             
       - name: "Passport Number Rule"
         conditions:

@@ -5,13 +5,13 @@ policies:
     priority: 1
     description: "Protects financial data from unauthorized sharing"
     
-    # Policy scope
+    # Policy scope - use string identifiers (e.g. "All")
     scope:
-      exchange: true
-      sharepoint: true
-      onedrive: true
-      teams: true
-      devices: false
+      exchange: ["All"]
+      sharepoint: ["All"]
+      onedrive: ["All"]
+      teams: ["All"]
+      devices: ["All"]
       
     # Policy rules
     rules:
@@ -33,9 +33,10 @@ policies:
       - name: "Banking Information Rule"
         conditions:
           - type: "SensitiveInfoType"
-            infoType: "BankAccountNumber"
+            infoType: "Australia Bank Account Number"
             minCount: 1
             
         actions:
-          - type: "Encrypt"
-            encryptionMethod: "Office365Message"
+          - type: "BlockAccess"
+            notifyUser: true
+            notifyAdmin: true

@@ -26,15 +26,16 @@ Write-Verbose "Loading DLPaC Module v$script:ModuleVersion"
 $ClassFiles = @(
     'BaseClass.ps1',
     'Logger.ps1',
-    'SchemaValidator.ps1',
     'Condition.ps1',
     'Action.ps1',
     'RuleAst.ps1',   # Phase 1 AST classes (must load after Condition/Action, before Rule)
     'Rule.ps1',
     'Policy.ps1',
-    'State.ps1',
     'Plan.ps1',
-    'IPPSPAdapter.ps1'
+    'State.ps1',
+    'SchemaValidator.ps1',
+    'IPPSPAdapter.ps1',
+    'CompatibilityValidator.ps1'  # Compatibility rules validator (must load after Policy/Rule/Plan)
 )
 
 foreach ($ClassFile in $ClassFiles) {

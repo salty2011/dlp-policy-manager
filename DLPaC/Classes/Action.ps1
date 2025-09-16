@@ -83,6 +83,11 @@ class DLPaCAction : DLPaCBaseObject {
             $action.EncryptionMethod = $YamlObject.encryptionMethod
         }
         
+        # Handle rmsTemplate mapping to EncryptionMethod for compatibility
+        if ($YamlObject.rmsTemplate) {
+            $action.EncryptionMethod = $YamlObject.rmsTemplate
+        }
+        
         $action.UpdateHash()
         return $action
     }
